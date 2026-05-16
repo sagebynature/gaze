@@ -64,8 +64,9 @@ Record only pass/fail, app category, display layout label, activation outcome, a
 
 ## Current Automated Evidence
 
-- `make check`: ruff passed, ty passed, pytest 102 passed.
-- `make check-pupil-dev PUPIL_TRACKER_PATH=/Users/sage/workspace/sagebynature/pupil-tracker`: ruff passed, ty passed, pytest 102 passed with editable sibling installed under `uv run --no-sync`.
+- `make check`: ruff passed, ty passed, pytest 105 passed.
+- `make check-pupil-dev PUPIL_TRACKER_PATH=/Users/sage/workspace/sagebynature/pupil-tracker`: ruff passed, ty passed, pytest 105 passed with editable sibling installed under `uv run --no-sync`.
+- Runtime wiring tests prove Recalibrate routes through the launched-app menu command path into the real calibration session, and the PupilTracker desktop subprocess is launched only on explicit calibration start.
 - Privacy-safe real provider smoke at 2026-05-16 11:49:23 EDT:
   - `pupil_tracker_available=True`.
   - Editable sibling source path exists.
@@ -75,4 +76,15 @@ Record only pass/fail, app category, display layout label, activation outcome, a
 
 ## Manual Validation Notes
 
-Manual validation is still required for the app coverage matrix and built-in + external display layouts before GAZE-027 can be closed.
+Runtime calibration wiring blocker was resolved in this branch before manual validation resumed.
+
+Resolved blocker:
+- Recalibrate now routes through the AppKit menu command path into `RealTrustPreviewController.start_calibration()`.
+- Runtime app construction now uses a real `PupilTrackerDesktopCalibrationSession` instead of `FakePrototypeController` fallback behavior.
+- The PupilTracker desktop calibration subprocess is launched only when calibration explicitly starts.
+- First valid scalar bridged gaze sample after launched calibration promotes Gaze to `READY` and records the current display layout signature.
+
+Current status:
+- Automated runtime wiring coverage is in place.
+- Manual launch must provide both `PUPIL_TRACKER_PATH` and `PUPIL_TRACKER_MEDIAPIPE_MODEL`; use `/Users/sage/workspace/sagebynature/pupil-tracker/models/face_landmarker.task` after running `make download-model` in the PupilTracker checkout.
+- Manual validation remains required for the app coverage matrix and built-in + external display layouts before GAZE-027 can be closed.

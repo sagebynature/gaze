@@ -10,10 +10,11 @@ from gaze.desktop.activation import ActivationOutcome
 from gaze.desktop.window_candidates import WindowCandidateSummary
 from gaze.overlays.border import RecordingBorderOverlay
 from gaze.tracking.calibration import CalibrationResult
+from gaze.tracking.gaze_pipeline import PupilTrackerGazeSample
 
 
 @dataclass(frozen=True)
-class Sample:
+class Sample(PupilTrackerGazeSample):
     timestamp: float
     x: float
     y: float
@@ -138,6 +139,37 @@ def test_calibration_is_started_only_by_explicit_recalibration() -> None:
     assert session.starts == 1
     assert controller.state.readiness.calibration is CalibrationStatus.READY
     assert controller.state.calibration_display_layout == display_layout
+
+
+def test_first_bridged_sample_after_launched_calibration_marks_ready() -> None:
+    from gaze.core.real_trust_preview import RealTrustPreviewController
+
+    display_layout = layout()
+    controller = RealTrustPreviewController(
+        overlay=RecordingBorderOverlay(),
+        activation=RecordingActivationService(),
+        calibration_session=RecordingCalibrationSession(
+            CalibrationResult(
+                status=CalibrationStatus.CALIBRATING,
+                message="PupilTracker calibration launched",
+                camera_available=True,
+                tracker_available=True,
+                display_layout=display_layout,
+            )
+        ),
+        sample_source=RecordingSampleSource(Sample(timestamp=1.0, x=100, y=100, confidence=0.9)),
+        window_provider=RecordingWindowProvider((candidate(),)),
+        display_provider=RecordingDisplayProvider(display_layout),
+    )
+
+    controller.enable_gaze()
+    controller.start_calibration()
+    controller.tick(now_seconds=1.0, now_ms=400)
+
+    assert controller.state.readiness.calibration is CalibrationStatus.READY
+    assert controller.state.calibration_display_layout == display_layout
+    assert controller.state.current_gaze_sample is not None
+    assert controller.state.current_gaze_sample.valid is True
 
 
 def test_tick_locks_real_window_target_and_shows_border_after_stability() -> None:

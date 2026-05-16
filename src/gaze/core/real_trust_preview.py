@@ -95,6 +95,29 @@ class RealTrustPreviewController:
         self.state = self._calibration.run(self.state)
         self._overlay.hide()
 
+    def toggle_border_enabled(self) -> None:
+        """Toggle the target border without changing calibration or gaze state."""
+
+        enabled = not self.state.flags.target_border_enabled
+        self.state = replace(
+            self.state,
+            flags=replace(self.state.flags, target_border_enabled=enabled),
+            overlay_visible=self.state.overlay_visible and enabled,
+            last_status_message=("Target border on" if enabled else "Target border off"),
+        )
+        if not enabled:
+            self._overlay.hide()
+
+    def toggle_heatmap_enabled(self) -> None:
+        """Toggle heatmap state for menu parity; rendering is handled later."""
+
+        enabled = not self.state.flags.heatmap_enabled
+        self.state = replace(
+            self.state,
+            flags=replace(self.state.flags, heatmap_enabled=enabled),
+            last_status_message=("Heatmap on" if enabled else "Heatmap off"),
+        )
+
     def tick(self, *, now_seconds: float, now_ms: int) -> None:
         """Advance one real trust-preview frame using scalar-only runtime data."""
 
@@ -121,6 +144,20 @@ class RealTrustPreviewController:
             self.state = self.state.with_target(None)
             self._overlay.hide()
             return
+
+        if self.state.readiness.calibration == CalibrationStatus.CALIBRATING:
+            layout = self._display_provider.current_layout()
+            self.state = replace(
+                self.state,
+                readiness=replace(
+                    self.state.readiness,
+                    calibration=CalibrationStatus.READY,
+                    camera_available=True,
+                    tracker_available=True,
+                ),
+                calibration_display_layout=layout,
+                last_status_message="Calibration ready",
+            )
 
         self.state = self._gaze_pipeline.apply(
             self.state,

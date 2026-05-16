@@ -45,6 +45,14 @@ make check-pupil-dev PUPIL_TRACKER_PATH=/Users/sage/workspace/sagebynature/pupil
 
 Use `check-pupil-dev` or `run-pupil-dev` after editable setup; those targets pass `uv run --no-sync` so uv does not silently revert the environment back to the locked PyPI package before execution.
 
+For manual real calibration, provide both the sibling checkout and the MediaPipe model path. If the model is missing, download it from the PupilTracker checkout first:
+
+```bash
+(cd /Users/sage/workspace/sagebynature/pupil-tracker && make download-model)
+PUPIL_TRACKER_MEDIAPIPE_MODEL=/Users/sage/workspace/sagebynature/pupil-tracker/models/face_landmarker.task \
+  make run-pupil-dev PUPIL_TRACKER_PATH=/Users/sage/workspace/sagebynature/pupil-tracker
+```
+
 If `PUPIL_TRACKER_PATH` is not provided, the target assumes a project-local sibling at `../pupil-tracker`.
 
 Launch the current skeleton app:

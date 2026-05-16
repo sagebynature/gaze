@@ -9,9 +9,10 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from importlib import import_module
-from typing import Any, cast
+from typing import Any, Protocol, cast
 
-from gaze.core.prototype import FakePrototypeController
+from gaze.core.state import GazeAppState
+from gaze.desktop.activation import ActivationOutcome
 from gaze.hotkeys.bindings import GAZE_TOGGLE_HOTKEY, MANUAL_ACTIVATE_HOTKEY
 from gaze.hotkeys.commands import GazeCommandController
 from gaze.ui.menu_model import MenuItem, menu_items_for_state
@@ -37,6 +38,36 @@ class RuntimeHotkeyRegistry:
             handler()
 
 
+class MenuRuntimeController(Protocol):
+    """Controller surface needed by the menu-bar shell."""
+
+    state: GazeAppState
+
+    def activate(self) -> ActivationOutcome:
+        """Request manual target activation."""
+        ...
+
+    def enable_gaze(self) -> None:
+        """Enable gaze preview."""
+        ...
+
+    def disable_gaze(self) -> None:
+        """Disable gaze preview."""
+        ...
+
+    def start_calibration(self) -> None:
+        """Start calibration."""
+        ...
+
+    def toggle_border_enabled(self) -> None:
+        """Toggle target border visibility."""
+        ...
+
+    def toggle_heatmap_enabled(self) -> None:
+        """Toggle heatmap visibility."""
+        ...
+
+
 @dataclass
 class MenuBarRuntime:
     appkit: Any
@@ -44,7 +75,7 @@ class MenuBarRuntime:
     status_item: Any
     menu: Any
     action_dispatcher: MenuActionDispatcher
-    controller: FakePrototypeController
+    controller: MenuRuntimeController
     development_mode: bool
     hotkeys: RuntimeHotkeyRegistry
 
@@ -66,7 +97,7 @@ class MenuActionDispatcher:
         self,
         *,
         appkit: Any,
-        controller: FakePrototypeController,
+        controller: MenuRuntimeController,
         development_mode: bool,
     ) -> None:
         self._appkit = appkit
@@ -97,10 +128,14 @@ class MenuActionDispatcher:
         self._refresh_menu()
 
     def developer_panel_(self, sender: Any | None = None) -> None:
+        developer_actions = getattr(self._controller, "developer_actions", None)
+        if developer_actions is None:
+            self._refresh_menu()
+            return
         self.developer_panel = create_developer_panel(
             self._appkit,
             development_mode=self._development_mode,
-            actions=self._controller.developer_actions(),
+            actions=developer_actions(),
             after_action=self._refresh_menu,
         )
         self._refresh_menu()
@@ -166,7 +201,7 @@ def _menu_item(appkit: Any, item: MenuItem, dispatcher: MenuActionDispatcher) ->
 def _populate_menu(
     appkit: Any,
     menu: Any,
-    controller: FakePrototypeController,
+    controller: MenuRuntimeController,
     development_mode: bool,
     dispatcher: MenuActionDispatcher,
 ) -> None:
@@ -180,7 +215,7 @@ def _populate_menu(
 def build_menu_bar_app(
     *,
     appkit: Any | None = None,
-    controller: FakePrototypeController,
+    controller: MenuRuntimeController,
     development_mode: bool,
 ) -> MenuBarRuntime:
     runtime_appkit = appkit or _load_appkit()
