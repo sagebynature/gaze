@@ -1,0 +1,56 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyre/
+.ty/
+.coverage
+coverage.xml
+htmlcov/
+
+# Virtual environments and local tooling
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+.python-version
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+*.whl
+*.tar.gz
+
+# macOS app/package outputs
+*.app/
+*.dmg
+*.pkg
+DerivedData/
+
+# Runtime artifacts
+logs/
+metrics/
+captures/
+recordings/
+models/
+*.jsonl
+
+# IDE/editor
+.idea/
+.vscode/
+*.swp
+*.swo
