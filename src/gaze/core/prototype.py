@@ -8,6 +8,7 @@ from gaze.core.state import CalibrationStatus, GazeAppState, GazeReadiness
 from gaze.core.target_lock import TargetLockPolicy, TargetObservation
 from gaze.desktop.activation import (
     ActivationOutcome,
+    FakeActivationService,
     TargetActivationService,
     request_manual_activation,
 )
@@ -27,6 +28,7 @@ class FakePrototypeController:
         self._activation = activation
         self._targets = target_controller or FakeTargetController()
         self._lock = TargetLockPolicy(stability_ms=400)
+        self._lock_override: bool | None = None
         self.state = GazeAppState.default()
 
     def enable_gaze(self) -> None:
@@ -45,11 +47,61 @@ class FakePrototypeController:
         self.state = self.state.disable_panic()
         self._overlay.hide()
 
+    def start_scripted_demo(self) -> None:
+        self._targets = FakeTargetController.scripted_demo()
+        self.enable_gaze()
+        self.state = replace(self.state, last_status_message="Scripted demo running")
+
+    def stop_scripted_demo(self) -> None:
+        self._targets.clear_target()
+        self._lock = TargetLockPolicy(stability_ms=400)
+        self._lock_override = None
+        self.state = self.state.with_target(None)
+        self._overlay.hide()
+        self.state = replace(self.state, last_status_message="Scripted demo stopped")
+
+    def advance_scripted_demo(self, *, now_ms: int) -> None:
+        self._targets.advance_script()
+        self.tick(now_ms=now_ms)
+        self.state = replace(self.state, last_status_message="Scripted demo running")
+
     def set_fake_target(self, target: FakeTarget) -> None:
         self._targets.set_manual_target(target)
 
     def clear_fake_target(self) -> None:
         self._targets.clear_target()
+        self.state = self.state.with_target(None)
+        self._overlay.hide()
+
+    def set_fake_target_bounds(self, *, x: int, y: int, width: int, height: int) -> None:
+        self._targets.update_current_bounds(x=x, y=y, width=width, height=height)
+        self._refresh_current_target_from_fake()
+
+    def set_fake_confidence(self, confidence: float) -> None:
+        self._targets.update_current_confidence(confidence)
+        self._refresh_current_target_from_fake()
+
+    def override_fake_lock_state(self, locked: bool) -> None:
+        self._lock_override = locked
+        target = self._targets.current_fake_target()
+        target_summary = None if target is None else target.as_target_summary(locked=locked)
+        self.state = self.state.with_target(target_summary)
+        self._sync_overlay_to_current_fake_target()
+
+    def set_fake_frontmost_app(self, app_name: str | None) -> None:
+        if isinstance(self._activation, FakeActivationService):
+            self._activation.set_frontmost_app(app_name)
+
+    def set_activation_success(self, success: bool) -> None:
+        if isinstance(self._activation, FakeActivationService):
+            self._activation.set_should_succeed(success)
+
+    def mark_calibration_degraded(self) -> None:
+        self.state = replace(
+            self.state,
+            readiness=replace(self.state.readiness, calibration=CalibrationStatus.DEGRADED),
+            last_status_message="Calibration degraded",
+        )
 
     def tick(self, *, now_ms: int) -> None:
         if not self.state.flags.gaze_enabled:
@@ -62,7 +114,8 @@ class FakePrototypeController:
         if fake_target is not None:
             observation = TargetObservation(fake_target.app_name, fake_target.confidence)
         lock = self._lock.update(observation, now_ms=now_ms)
-        if fake_target is None or not lock.locked:
+        locked = self._lock_override if self._lock_override is not None else lock.locked
+        if fake_target is None or not locked:
             self.state = self.state.with_target(None)
             self._overlay.hide()
             return
@@ -83,3 +136,29 @@ class FakePrototypeController:
         }[outcome]
         self.state = replace(self.state, last_status_message=message)
         return outcome
+
+    def _refresh_current_target_from_fake(self) -> None:
+        target = self._targets.current_fake_target()
+        if target is None:
+            self.state = self.state.with_target(None)
+            return
+        locked = False
+        if self.state.current_target is not None:
+            locked = self.state.current_target.locked
+        if self._lock_override is not None:
+            locked = self._lock_override
+        self.state = self.state.with_target(target.as_target_summary(locked=locked))
+        self._sync_overlay_to_current_fake_target()
+
+    def _sync_overlay_to_current_fake_target(self) -> None:
+        target = self._targets.current_fake_target()
+        if (
+            target is not None
+            and self.state.flags.gaze_enabled
+            and self.state.flags.target_border_enabled
+            and self.state.current_target is not None
+            and self.state.current_target.locked
+        ):
+            self._overlay.show(target.as_window_candidate())
+        else:
+            self._overlay.hide()

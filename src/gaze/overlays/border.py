@@ -42,12 +42,15 @@ class BorderOverlayStyle:
 class RecordingBorderOverlay:
     def __init__(self) -> None:
         self.visible = False
+        self.last_candidate: WindowCandidateSummary | None = None
         self.events: list[tuple[str, str | None]] = []
 
     def show(self, candidate: WindowCandidateSummary) -> None:
         self.visible = True
+        self.last_candidate = candidate
         self.events.append(("show", candidate.app_name))
 
     def hide(self) -> None:
         self.visible = False
+        self.last_candidate = None
         self.events.append(("hide", None))

@@ -46,6 +46,12 @@ class FakeActivationService:
         self._frontmost.set_frontmost(app_name)
         return ActivationOutcome.SUCCESS
 
+    def set_frontmost_app(self, app_name: str | None) -> None:
+        self._frontmost.set_frontmost(app_name)
+
+    def set_should_succeed(self, should_succeed: bool) -> None:
+        self._should_succeed = should_succeed
+
 
 def request_manual_activation(
     state: GazeAppState,

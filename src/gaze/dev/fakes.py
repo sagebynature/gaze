@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from gaze.core.state import TargetSummary
 from gaze.desktop.window_candidates import WindowCandidateSummary
@@ -47,7 +47,15 @@ class FakeTargetController:
             )
         )
 
+    def set_script(self, script: tuple[FakeTarget | None, ...]) -> None:
+        self._script = script
+        self._script_index = 0
+        self._manual_target = None
+
     def set_manual_target(self, target: FakeTarget) -> None:
+        self._manual_target = target
+
+    def update_manual_target(self, target: FakeTarget) -> None:
         self._manual_target = target
 
     def clear_target(self) -> None:
@@ -69,6 +77,16 @@ class FakeTargetController:
     def current_target(self) -> TargetSummary | None:
         target = self.current_fake_target()
         return None if target is None else target.as_target_summary()
+
+    def update_current_bounds(self, *, x: float, y: float, width: float, height: float) -> None:
+        target = self.current_fake_target()
+        if target is not None:
+            self._manual_target = replace(target, x=x, y=y, width=width, height=height)
+
+    def update_current_confidence(self, confidence: float) -> None:
+        target = self.current_fake_target()
+        if target is not None:
+            self._manual_target = replace(target, confidence=confidence)
 
 
 class FakeFrontmostApp:
