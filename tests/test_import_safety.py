@@ -17,3 +17,17 @@ def test_importing_appkit_shell_does_not_import_appkit() -> None:
 
     assert "AppKit" not in sys.modules
     assert hasattr(shell, "build_menu_bar_app")
+
+
+def test_appkit_event_loop_uses_pyobjc_compatible_signature() -> None:
+    app = importlib.import_module("gaze.app")
+    calls = []
+
+    class FakeAppKit:
+        @staticmethod
+        def NSApplicationMain(*args):
+            calls.append(args)
+            return 0
+
+    assert app._run_event_loop(FakeAppKit) == 0
+    assert calls == [([],)]

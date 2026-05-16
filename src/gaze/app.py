@@ -32,4 +32,10 @@ def main() -> int:
         activation=FakeActivationService(),
     )
     build_menu_bar_app(appkit=appkit, controller=controller, development_mode=True)
-    return int(appkit.NSApplicationMain([], None) or 0)
+    return _run_event_loop(appkit)
+
+
+def _run_event_loop(appkit: Any) -> int:
+    """Run the PyObjC AppKit event loop with the supported signature."""
+
+    return int(appkit.NSApplicationMain([]) or 0)
