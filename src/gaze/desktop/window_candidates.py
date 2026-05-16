@@ -8,7 +8,12 @@ from typing import Protocol
 
 @dataclass(frozen=True)
 class WindowCandidateSummary:
-    """UI-safe summary of a visible window candidate."""
+    """In-memory summary of a visible window candidate.
+
+    Window titles and desktop contents stay out of this model. The owner process
+    identifier is retained only as runtime activation identity for later AppKit
+    activation and must not be serialized as diagnostics without privacy review.
+    """
 
     app_name: str
     bounds_x: float
@@ -16,6 +21,7 @@ class WindowCandidateSummary:
     bounds_width: float
     bounds_height: float
     confidence: float = 0.0
+    owner_process_id: int | None = None
 
 
 class WindowCandidateProvider(Protocol):
