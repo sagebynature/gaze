@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import StrEnum
 
 
@@ -53,3 +53,73 @@ def manual_activation_allowed(flags: GazeFeatureFlags, readiness: GazeReadiness)
     """Return whether Cmd+G is allowed to request target activation."""
 
     return flags.gaze_enabled and readiness.can_track
+
+
+@dataclass(frozen=True)
+class TargetSummary:
+    """UI-safe target summary. App name only; never a window title."""
+
+    app_name: str
+    confidence: float
+    locked: bool
+
+    def __post_init__(self) -> None:
+        if " - " in self.app_name:
+            raise ValueError("target summary must use app name only")
+
+
+@dataclass(frozen=True)
+class GazeAppState:
+    """Pure state snapshot for menu, overlay, and activation decisions."""
+
+    flags: GazeFeatureFlags
+    readiness: GazeReadiness
+    current_target: TargetSummary | None = None
+    overlay_visible: bool = False
+    last_status_message: str = "Gaze off"
+
+    @classmethod
+    def default(cls) -> GazeAppState:
+        return cls(flags=GazeFeatureFlags(), readiness=GazeReadiness())
+
+    @property
+    def menu_status(self) -> str:
+        if not self.flags.gaze_enabled:
+            return "off"
+        if self.readiness.calibration == CalibrationStatus.CALIBRATING:
+            return "calibrating"
+        if self.readiness.calibration == CalibrationStatus.DEGRADED:
+            return "degraded"
+        if manual_activation_allowed(self.flags, self.readiness):
+            return "ready"
+        return "not_ready"
+
+    @property
+    def activation_blocked(self) -> bool:
+        return not (
+            manual_activation_allowed(self.flags, self.readiness)
+            and self.current_target is not None
+            and self.current_target.locked
+        )
+
+    def with_target(self, target: TargetSummary | None) -> GazeAppState:
+        return replace(
+            self,
+            current_target=target,
+            overlay_visible=(
+                self.flags.gaze_enabled
+                and self.flags.target_border_enabled
+                and target is not None
+                and target.locked
+            ),
+            last_status_message="Target locked" if target and target.locked else "No target",
+        )
+
+    def disable_panic(self) -> GazeAppState:
+        return replace(
+            self,
+            flags=replace(self.flags, gaze_enabled=False),
+            current_target=None,
+            overlay_visible=False,
+            last_status_message="Gaze disabled",
+        )
