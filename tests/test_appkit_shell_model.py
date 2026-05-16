@@ -1,7 +1,9 @@
 from gaze.core.prototype import FakePrototypeController
 from gaze.desktop.activation import FakeActivationService
+from gaze.dev.fakes import FakeTarget
 from gaze.overlays.border import RecordingBorderOverlay
 from gaze.ui.appkit_shell import build_menu_bar_app
+from gaze.ui.developer_panel import developer_controls
 
 
 class FakeStatusItem:
@@ -38,6 +40,58 @@ class FakeApplication:
         self.terminated_by = sender
 
 
+class FakeWindow:
+    def __init__(self) -> None:
+        self.title = ""
+        self.content_text = ""
+        self.action_names: list[str] = []
+        self.shown = False
+
+    @classmethod
+    def alloc(cls):
+        return cls()
+
+    def init(self):
+        return self
+
+    def setTitle_(self, title: str) -> None:
+        self.title = title
+
+    def setContentView_(self, view) -> None:
+        self.content_text = getattr(view, "string", "")
+        self.action_names = getattr(view, "action_names", [])
+
+    def makeKeyAndOrderFront_(self, sender) -> None:
+        self.shown = True
+
+
+class FakeTextView:
+    def __init__(self) -> None:
+        self.string = ""
+        self.editable = True
+        self.selectable = False
+        self.action_names: list[str] = []
+
+    @classmethod
+    def alloc(cls):
+        return cls()
+
+    def init(self):
+        return self
+
+    def setString_(self, value: str) -> None:
+        self.string = value
+
+    def setEditable_(self, value: bool) -> None:
+        self.editable = value
+
+    def setSelectable_(self, value: bool) -> None:
+        self.selectable = value
+
+    def setActionNames_(self, names: list[str]) -> None:
+        self.action_names = names
+
+
 class FakeMenu:
     def __init__(self) -> None:
         self.items: list[str] = []
@@ -47,11 +101,17 @@ class FakeMenu:
         self.items.append(item.title)
         self.raw_items.append(item)
 
+    def removeAllItems(self) -> None:
+        self.items = []
+        self.raw_items = []
+
 
 class FakeMenuItem:
     def __init__(self) -> None:
         self.title = ""
         self.action = None
+        self.key = ""
+        self.modifier_mask = None
         self.target = None
 
     @classmethod
@@ -61,6 +121,7 @@ class FakeMenuItem:
     def initWithTitle_action_keyEquivalent_(self, title: str, action, key: str):
         self.title = title
         self.action = action
+        self.key = key
         return self
 
     def setTarget_(self, target) -> None:
@@ -69,11 +130,18 @@ class FakeMenuItem:
     def setAction_(self, action) -> None:
         self.action = action
 
+    def setKeyEquivalentModifierMask_(self, mask: int) -> None:
+        self.modifier_mask = mask
+
 
 class FakeAppKit:
     NSApplicationActivationPolicyAccessory = 1
     NSSquareStatusItemLength = -2.0
+    NSEventModifierFlagCommand = 1
+    NSEventModifierFlagOption = 2
     NSMenuItem = FakeMenuItem
+    NSWindow = FakeWindow
+    NSTextView = FakeTextView
 
     class NSApplication:
         _app = FakeApplication()
@@ -111,6 +179,7 @@ def test_build_menu_bar_app_creates_status_item_and_menu() -> None:
         for item in runtime.status_item.menu.raw_items
         if item.action is not None
     }
+    assert "Activate Target" in action_items
     assert "Settings" in action_items
     assert "Open Developer Panel" in action_items
     assert "Enable Gaze" in action_items
@@ -129,3 +198,71 @@ def test_every_menu_model_action_has_runtime_selector() -> None:
 
     assert actions
     assert all(selector_for_menu_action(action) is not None for action in actions)
+
+
+def test_settings_and_developer_panel_windows_are_shown_and_populated() -> None:
+    appkit = FakeAppKit()
+    controller = FakePrototypeController(
+        overlay=RecordingBorderOverlay(),
+        activation=FakeActivationService(),
+    )
+    runtime = build_menu_bar_app(appkit=appkit, controller=controller, development_mode=True)
+
+    runtime.action_dispatcher.settings_()
+    runtime.action_dispatcher.developer_panel_()
+
+    settings = runtime.action_dispatcher.settings_window
+    developer = runtime.action_dispatcher.developer_panel
+    assert settings is not None
+    assert settings.shown is True
+    assert settings.title == "Gaze Settings"
+    assert (
+        "No recording, no screenshots, no clicks, manual activation only."
+        in settings.content_text
+    )
+    assert developer is not None
+    assert developer.shown is True
+    assert developer.title == "Gaze Developer Panel"
+    assert "Start Scripted Demo" in developer.content_text
+    assert {control.action for control in developer_controls()} <= set(developer.action_names)
+
+
+def test_menu_refreshes_after_commands_and_surfaces_status_feedback() -> None:
+    appkit = FakeAppKit()
+    controller = FakePrototypeController(
+        overlay=RecordingBorderOverlay(),
+        activation=FakeActivationService(),
+    )
+    runtime = build_menu_bar_app(appkit=appkit, controller=controller, development_mode=True)
+
+    runtime.action_dispatcher.toggle_gaze_()
+
+    assert "Status: ready" in runtime.status_item.menu.items
+    assert "Message: Gaze ready" in runtime.status_item.menu.items
+    assert "Disable Gaze" in runtime.status_item.menu.items
+
+    controller.set_fake_target(FakeTarget("Terminal", 10, 20, 800, 600, 0.91))
+    controller.override_fake_lock_state(True)
+    runtime.refresh_menu()
+    runtime.action_dispatcher.manual_activate_()
+
+    assert "Target: Terminal" in runtime.status_item.menu.items
+    assert "Message: Activated Terminal" in runtime.status_item.menu.items
+
+
+def test_runtime_hotkeys_trigger_same_command_seams_and_refresh_menu() -> None:
+    appkit = FakeAppKit()
+    controller = FakePrototypeController(
+        overlay=RecordingBorderOverlay(),
+        activation=FakeActivationService(),
+    )
+    runtime = build_menu_bar_app(appkit=appkit, controller=controller, development_mode=True)
+
+    runtime.hotkeys.trigger("option+cmd+g")
+    controller.set_fake_target(FakeTarget("Terminal", 10, 20, 800, 600, 0.91))
+    controller.override_fake_lock_state(True)
+    runtime.hotkeys.trigger("cmd+g")
+
+    assert controller.state.flags.gaze_enabled is True
+    assert controller.state.last_status_message == "Activated Terminal"
+    assert "Message: Activated Terminal" in runtime.status_item.menu.items
