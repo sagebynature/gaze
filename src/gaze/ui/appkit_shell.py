@@ -101,6 +101,7 @@ class MenuActionDispatcher:
             self._appkit,
             development_mode=self._development_mode,
             actions=self._controller.developer_actions(),
+            after_action=self._refresh_menu,
         )
         self._refresh_menu()
 

@@ -156,3 +156,55 @@ def test_developer_lock_and_bounds_controls_keep_overlay_in_sync() -> None:
 
     actions.set_fake_lock_state(False)
     assert overlay.visible is False
+
+
+def test_developer_panel_action_target_makes_controls_visible_and_refreshes() -> None:
+    from gaze.core.prototype import FakePrototypeController
+    from gaze.desktop.activation import FakeActivationService
+    from gaze.overlays.border import RecordingBorderOverlay
+    from gaze.ui.developer_actions import DeveloperPanelActions
+    from gaze.ui.window_factories import DeveloperPanelActionTarget
+
+    overlay = RecordingBorderOverlay()
+    controller = FakePrototypeController(overlay=overlay, activation=FakeActivationService())
+    refreshes = 0
+
+    def refresh() -> None:
+        nonlocal refreshes
+        refreshes += 1
+
+    target = DeveloperPanelActionTarget(DeveloperPanelActions(controller), after_action=refresh)
+
+    target.set_fake_target_()
+
+    assert controller.state.flags.gaze_enabled is True
+    assert controller.state.current_target is not None
+    assert controller.state.current_target.app_name == "Terminal"
+    assert controller.state.current_target.locked is True
+    assert overlay.visible is True
+    assert refreshes == 1
+
+    target.trigger_no_target_()
+
+    assert controller.state.current_target is None
+    assert overlay.visible is False
+    assert refreshes == 2
+
+
+def test_start_scripted_demo_button_immediately_surfaces_locked_target() -> None:
+    from gaze.core.prototype import FakePrototypeController
+    from gaze.desktop.activation import FakeActivationService
+    from gaze.overlays.border import RecordingBorderOverlay
+    from gaze.ui.developer_actions import DeveloperPanelActions
+    from gaze.ui.window_factories import DeveloperPanelActionTarget
+
+    overlay = RecordingBorderOverlay()
+    controller = FakePrototypeController(overlay=overlay, activation=FakeActivationService())
+    target = DeveloperPanelActionTarget(DeveloperPanelActions(controller))
+
+    target.start_scripted_demo_()
+
+    assert controller.state.flags.gaze_enabled is True
+    assert controller.state.current_target is not None
+    assert controller.state.current_target.locked is True
+    assert overlay.visible is True

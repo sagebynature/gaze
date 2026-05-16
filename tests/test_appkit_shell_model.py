@@ -41,17 +41,39 @@ class FakeApplication:
 
 
 class FakeWindow:
+    __slots__ = (
+        "action_names",
+        "backing",
+        "content_rect",
+        "content_text",
+        "defer",
+        "shown",
+        "style_mask",
+        "title",
+    )
+
     def __init__(self) -> None:
         self.title = ""
         self.content_text = ""
         self.action_names: list[str] = []
         self.shown = False
+        self.content_rect = None
+        self.style_mask = None
+        self.backing = None
+        self.defer = None
 
     @classmethod
     def alloc(cls):
         return cls()
 
     def init(self):
+        return self
+
+    def initWithContentRect_styleMask_backing_defer_(self, rect, style_mask, backing, defer):
+        self.content_rect = rect
+        self.style_mask = style_mask
+        self.backing = backing
+        self.defer = defer
         return self
 
     def setTitle_(self, title: str) -> None:
@@ -139,9 +161,16 @@ class FakeAppKit:
     NSSquareStatusItemLength = -2.0
     NSEventModifierFlagCommand = 1
     NSEventModifierFlagOption = 2
+    NSWindowStyleMaskTitled = 4
+    NSWindowStyleMaskClosable = 8
+    NSBackingStoreBuffered = 2
     NSMenuItem = FakeMenuItem
     NSWindow = FakeWindow
     NSTextView = FakeTextView
+
+    @staticmethod
+    def NSMakeRect(x, y, width, height):
+        return (x, y, width, height)
 
     class NSApplication:
         _app = FakeApplication()
@@ -216,6 +245,7 @@ def test_settings_and_developer_panel_windows_are_shown_and_populated() -> None:
     assert settings is not None
     assert settings.shown is True
     assert settings.title == "Gaze Settings"
+    assert settings.content_rect == (0, 0, 420, 320)
     assert (
         "No recording, no screenshots, no clicks, manual activation only."
         in settings.content_text
@@ -223,6 +253,7 @@ def test_settings_and_developer_panel_windows_are_shown_and_populated() -> None:
     assert developer is not None
     assert developer.shown is True
     assert developer.title == "Gaze Developer Panel"
+    assert developer.content_rect == (0, 0, 460, 480)
     assert "Start Scripted Demo" in developer.content_text
     assert {control.action for control in developer_controls()} <= set(developer.action_names)
 

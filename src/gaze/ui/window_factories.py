@@ -2,26 +2,44 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 from gaze.ui.developer_actions import DeveloperPanelActions
 from gaze.ui.developer_panel import DeveloperControl, developer_controls
 from gaze.ui.setup_window import setup_sections
 
+_RETAINED_DEVELOPER_TARGETS: list[DeveloperPanelActionTarget] = []
+
 
 class DeveloperPanelActionTarget:
     """Objective-C selector target that keeps developer panel buttons fake-safe."""
 
-    def __init__(self, actions: DeveloperPanelActions) -> None:
+    def __init__(
+        self,
+        actions: DeveloperPanelActions,
+        *,
+        after_action: Callable[[], None] | None = None,
+    ) -> None:
         self._actions = actions
+        self._after_action = after_action
+
+    def _done(self) -> None:
+        if self._after_action is not None:
+            self._after_action()
 
     def start_scripted_demo_(self, sender: Any | None = None) -> None:
         self._actions.start_scripted_demo()
+        self._actions.tick(now_ms=1000)
+        self._actions.tick(now_ms=1400)
+        self._done()
 
     def stop_scripted_demo_(self, sender: Any | None = None) -> None:
         self._actions.stop_scripted_demo()
+        self._done()
 
     def set_fake_target_(self, sender: Any | None = None) -> None:
+        self._actions.enable_gaze()
         self._actions.set_fake_target(
             app_name="Terminal",
             x=120,
@@ -30,35 +48,58 @@ class DeveloperPanelActionTarget:
             height=700,
             confidence=0.91,
         )
+        self._actions.set_fake_lock_state(True)
+        self._done()
 
     def set_fake_target_bounds_(self, sender: Any | None = None) -> None:
         self._actions.set_fake_target_bounds(x=120, y=120, width=900, height=700)
+        self._done()
 
     def set_fake_confidence_(self, sender: Any | None = None) -> None:
         self._actions.set_fake_confidence(0.91)
+        self._done()
 
     def set_fake_lock_state_(self, sender: Any | None = None) -> None:
+        self._actions.enable_gaze()
         self._actions.set_fake_lock_state(True)
+        self._done()
 
     def set_fake_frontmost_app_(self, sender: Any | None = None) -> None:
         self._actions.set_fake_frontmost_app("Terminal")
+        self._done()
 
     def trigger_activation_success_(self, sender: Any | None = None) -> None:
         self._actions.trigger_activation_success()
+        self._done()
 
     def trigger_activation_failure_(self, sender: Any | None = None) -> None:
         self._actions.trigger_activation_failure()
+        self._done()
 
     def trigger_no_target_(self, sender: Any | None = None) -> None:
         self._actions.trigger_no_target()
+        self._done()
 
     def trigger_degraded_(self, sender: Any | None = None) -> None:
         self._actions.trigger_degraded()
+        self._done()
+
+
+def _utility_window(appkit: Any, *, width: int, height: int) -> Any:
+    style_mask = appkit.NSWindowStyleMaskTitled | appkit.NSWindowStyleMaskClosable
+    return appkit.NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
+        appkit.NSMakeRect(0, 0, width, height),
+        style_mask,
+        appkit.NSBackingStoreBuffered,
+        False,
+    )
 
 
 def _show_window(window: Any, *, title: str, content_view: Any) -> Any:
     window.setTitle_(title)
     window.setContentView_(content_view)
+    if hasattr(window, "center"):
+        window.center()
     window.makeKeyAndOrderFront_(None)
     return window
 
@@ -98,7 +139,10 @@ def _button_stack(
             target,
             _developer_action_selector(control.action),
         )
-        stack.addView_inGravity_(button, 0)
+        if hasattr(stack, "addArrangedSubview_"):
+            stack.addArrangedSubview_(button)
+        else:
+            stack.addView_inGravity_(button, 0)
     return stack
 
 
@@ -109,7 +153,7 @@ def create_settings_window(appkit: Any | None) -> Any | None:
         f"{section.label}\n{section.description}" for section in setup_sections()
     )
     return _show_window(
-        appkit.NSWindow.alloc().init(),
+        _utility_window(appkit, width=420, height=320),
         title="Gaze Settings",
         content_view=_text_view(appkit, text),
     )
@@ -120,21 +164,20 @@ def create_developer_panel(
     *,
     development_mode: bool,
     actions: DeveloperPanelActions | None = None,
+    after_action: Callable[[], None] | None = None,
 ) -> Any | None:
     if appkit is None or not development_mode or actions is None:
         return None
     controls = developer_controls()
-    target = DeveloperPanelActionTarget(actions)
+    target = DeveloperPanelActionTarget(actions, after_action=after_action)
+    _RETAINED_DEVELOPER_TARGETS.append(target)
     content_view = _button_stack(appkit, controls=controls, target=target)
     if content_view is None:
         text = "\n".join(control.label for control in controls)
         action_names = [control.action for control in controls]
         content_view = _text_view(appkit, text, action_names=action_names)
-    window = _show_window(
-        appkit.NSWindow.alloc().init(),
+    return _show_window(
+        _utility_window(appkit, width=460, height=480),
         title="Gaze Developer Panel",
         content_view=content_view,
     )
-    target_attribute = "_gaze_developer_target"
-    setattr(window, target_attribute, target)
-    return window
