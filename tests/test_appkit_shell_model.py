@@ -250,6 +250,7 @@ def test_settings_and_developer_panel_windows_are_shown_and_populated() -> None:
         "No recording, no screenshots, no clicks, manual activation only."
         in settings.content_text
     )
+    assert "recalibrate" in settings.action_names
     assert developer is not None
     assert developer.shown is True
     assert developer.title == "Gaze Developer Panel"

@@ -114,7 +114,7 @@ class MenuActionDispatcher:
         self._refresh_menu()
 
     def recalibrate_(self, sender: Any | None = None) -> None:
-        self._controller.start_fake_recalibration()
+        self._commands.recalibrate_command()
         self._refresh_menu()
 
     def quit_(self, sender: Any | None = None) -> None:

@@ -149,13 +149,15 @@ def _button_stack(
 def create_settings_window(appkit: Any | None) -> Any | None:
     if appkit is None:
         return None
+    sections = setup_sections()
     text = "\n\n".join(
-        f"{section.label}\n{section.description}" for section in setup_sections()
+        f"{section.label}\n{section.description}" for section in sections
     )
+    action_names = [section.action for section in sections if section.action is not None]
     return _show_window(
         _utility_window(appkit, width=420, height=320),
         title="Gaze Settings",
-        content_view=_text_view(appkit, text),
+        content_view=_text_view(appkit, text, action_names=action_names),
     )
 
 

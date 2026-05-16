@@ -11,6 +11,7 @@ WINDOW_TITLE = "Gaze"
 class SetupSection:
     label: str
     description: str
+    action: str | None = None
 
 
 def setup_sections() -> list[SetupSection]:
@@ -19,7 +20,7 @@ def setup_sections() -> list[SetupSection]:
             "Privacy & Trust",
             "No recording, no screenshots, no clicks, manual activation only.",
         ),
-        SetupSection("Calibration", "Start or retry calibration just in time."),
+        SetupSection("Calibration", "Start or retry calibration just in time.", "recalibrate"),
         SetupSection("Hotkeys", "Edit Cmd+G activation and Option+Cmd+G toggle."),
         SetupSection("Border", "Control target border preview."),
         SetupSection("Heatmap", "Optional session-local diagnostic overlay."),

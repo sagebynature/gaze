@@ -18,3 +18,6 @@ class GazeCommandController:
             self._prototype.disable_gaze()
         else:
             self._prototype.enable_gaze()
+
+    def recalibrate_command(self) -> None:
+        self._prototype.start_calibration()

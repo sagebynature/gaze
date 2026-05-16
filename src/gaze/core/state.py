@@ -90,6 +90,8 @@ class GazeAppState:
             return "calibrating"
         if self.readiness.calibration == CalibrationStatus.DEGRADED:
             return "degraded"
+        if self.readiness.calibration == CalibrationStatus.RETRY_REQUIRED:
+            return "retry_required"
         if manual_activation_allowed(self.flags, self.readiness):
             return "ready"
         return "not_ready"

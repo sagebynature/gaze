@@ -14,6 +14,7 @@ from gaze.desktop.activation import (
 )
 from gaze.dev.fakes import FakeTarget, FakeTargetController
 from gaze.overlays.border import TargetBorderOverlay
+from gaze.tracking.calibration import CalibrationOnboardingController, CalibrationSession
 
 
 class FakePrototypeController:
@@ -23,10 +24,12 @@ class FakePrototypeController:
         overlay: TargetBorderOverlay,
         activation: TargetActivationService,
         target_controller: FakeTargetController | None = None,
+        calibration_session: CalibrationSession | None = None,
     ) -> None:
         self._overlay = overlay
         self._activation = activation
         self._targets = target_controller or FakeTargetController()
+        self._calibration_session = calibration_session
         self._lock = TargetLockPolicy(stability_ms=400)
         self._lock_override: bool | None = None
         self.state = GazeAppState.default()
@@ -122,12 +125,20 @@ class FakePrototypeController:
         )
 
     def start_fake_recalibration(self) -> None:
-        self.state = replace(
-            self.state.with_target(None),
-            readiness=replace(self.state.readiness, calibration=CalibrationStatus.CALIBRATING),
-            last_status_message="Calibrating",
-        )
+        if self._calibration_session is not None:
+            self.state = CalibrationOnboardingController(
+                session=self._calibration_session
+            ).run(self.state)
+        else:
+            self.state = replace(
+                self.state.with_target(None),
+                readiness=replace(self.state.readiness, calibration=CalibrationStatus.CALIBRATING),
+                last_status_message="Calibrating",
+            )
         self._overlay.hide()
+
+    def start_calibration(self) -> None:
+        self.start_fake_recalibration()
 
     def developer_actions(self):
         from gaze.ui.developer_actions import DeveloperPanelActions
