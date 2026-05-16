@@ -29,10 +29,23 @@ The MVP is trust-first: calibration, current-target preview, subtle border overl
 
 ## Local setup
 
+Default release-style development setup uses the PyPI dependency declared in `pyproject.toml`:
+
 ```bash
 make sync
 make check
 ```
+
+During real trust preview work, use the editable sibling PupilTracker checkout when you need local calibration or gaze changes without publishing a package:
+
+```bash
+make sync-pupil-dev PUPIL_TRACKER_PATH=/Users/sage/workspace/sagebynature/pupil-tracker
+make check-pupil-dev PUPIL_TRACKER_PATH=/Users/sage/workspace/sagebynature/pupil-tracker
+```
+
+Use `check-pupil-dev` or `run-pupil-dev` after editable setup; those targets pass `uv run --no-sync` so uv does not silently revert the environment back to the locked PyPI package before execution.
+
+If `PUPIL_TRACKER_PATH` is not provided, the target assumes a project-local sibling at `../pupil-tracker`.
 
 Launch the current skeleton app:
 
