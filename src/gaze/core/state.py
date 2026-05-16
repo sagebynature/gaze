@@ -69,12 +69,25 @@ class TargetSummary:
 
 
 @dataclass(frozen=True)
+class GazeSampleSummary:
+    """UI-safe app-level gaze sample with no frame or desktop content."""
+
+    timestamp: float
+    x: float
+    y: float
+    confidence: float
+    valid: bool
+    reason: str | None = None
+
+
+@dataclass(frozen=True)
 class GazeAppState:
     """Pure state snapshot for menu, overlay, and activation decisions."""
 
     flags: GazeFeatureFlags
     readiness: GazeReadiness
     current_target: TargetSummary | None = None
+    current_gaze_sample: GazeSampleSummary | None = None
     overlay_visible: bool = False
     last_status_message: str = "Gaze off"
 
@@ -117,11 +130,36 @@ class GazeAppState:
             last_status_message="Target locked" if target and target.locked else "No target",
         )
 
+    def with_gaze_sample(self, sample: GazeSampleSummary) -> GazeAppState:
+        if sample.valid:
+            return replace(
+                self,
+                current_gaze_sample=sample,
+                last_status_message="Gaze sample ready",
+            )
+
+        reason = sample.reason or "invalid sample"
+        degraded_readiness = self.readiness
+        if self.readiness.can_track:
+            degraded_readiness = replace(
+                self.readiness,
+                calibration=CalibrationStatus.DEGRADED,
+            )
+        return replace(
+            self,
+            readiness=degraded_readiness,
+            current_gaze_sample=sample,
+            current_target=None,
+            overlay_visible=False,
+            last_status_message=f"Gaze degraded: {reason}",
+        )
+
     def disable_panic(self) -> GazeAppState:
         return replace(
             self,
             flags=replace(self.flags, gaze_enabled=False),
             current_target=None,
+            current_gaze_sample=None,
             overlay_visible=False,
             last_status_message="Gaze disabled",
         )
