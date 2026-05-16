@@ -103,6 +103,37 @@ class FakePrototypeController:
             last_status_message="Calibration degraded",
         )
 
+    def toggle_border_enabled(self) -> None:
+        enabled = not self.state.flags.target_border_enabled
+        self.state = replace(
+            self.state,
+            flags=replace(self.state.flags, target_border_enabled=enabled),
+            overlay_visible=self.state.overlay_visible and enabled,
+        )
+        if enabled:
+            self._sync_overlay_to_current_fake_target()
+        else:
+            self._overlay.hide()
+
+    def toggle_heatmap_enabled(self) -> None:
+        self.state = replace(
+            self.state,
+            flags=replace(self.state.flags, heatmap_enabled=not self.state.flags.heatmap_enabled),
+        )
+
+    def start_fake_recalibration(self) -> None:
+        self.state = replace(
+            self.state.with_target(None),
+            readiness=replace(self.state.readiness, calibration=CalibrationStatus.CALIBRATING),
+            last_status_message="Calibrating",
+        )
+        self._overlay.hide()
+
+    def developer_actions(self):
+        from gaze.ui.developer_actions import DeveloperPanelActions
+
+        return DeveloperPanelActions(self)
+
     def tick(self, *, now_ms: int) -> None:
         if not self.state.flags.gaze_enabled:
             self.state = self.state.with_target(None)
