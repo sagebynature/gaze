@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from enum import StrEnum
 
+from gaze.core.display_geometry import DisplayLayoutSnapshot
+
 
 class CalibrationStatus(StrEnum):
     """User-facing calibration readiness."""
@@ -90,6 +92,7 @@ class GazeAppState:
     current_gaze_sample: GazeSampleSummary | None = None
     overlay_visible: bool = False
     last_status_message: str = "Gaze off"
+    calibration_display_layout: DisplayLayoutSnapshot | None = None
 
     @classmethod
     def default(cls) -> GazeAppState:
@@ -152,6 +155,29 @@ class GazeAppState:
             current_target=None,
             overlay_visible=False,
             last_status_message=f"Gaze degraded: {reason}",
+        )
+
+    def with_current_display_layout(
+        self,
+        current_layout: DisplayLayoutSnapshot,
+    ) -> GazeAppState:
+        """Validate current layout against the layout used for calibration."""
+
+        if self.calibration_display_layout is None:
+            return replace(self, calibration_display_layout=current_layout)
+        if self.calibration_display_layout.signature == current_layout.signature:
+            return self
+        if self.readiness.calibration not in {
+            CalibrationStatus.READY,
+            CalibrationStatus.DEGRADED,
+        }:
+            return self
+        return replace(
+            self,
+            readiness=replace(self.readiness, calibration=CalibrationStatus.DEGRADED),
+            current_target=None,
+            overlay_visible=False,
+            last_status_message="Display layout changed; recalibrate recommended",
         )
 
     def disable_panic(self) -> GazeAppState:

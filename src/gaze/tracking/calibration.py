@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from typing import Protocol
 
+from gaze.core.display_geometry import DisplayLayoutSnapshot
 from gaze.core.state import CalibrationStatus, GazeAppState, GazeReadiness
 
 
@@ -21,10 +22,20 @@ class CalibrationResult:
     message: str
     camera_available: bool = True
     tracker_available: bool = True
+    display_layout: DisplayLayoutSnapshot | None = None
 
     @classmethod
-    def ready(cls, message: str = "Calibration ready") -> CalibrationResult:
-        return cls(status=CalibrationStatus.READY, message=message)
+    def ready(
+        cls,
+        message: str = "Calibration ready",
+        *,
+        display_layout: DisplayLayoutSnapshot | None = None,
+    ) -> CalibrationResult:
+        return cls(
+            status=CalibrationStatus.READY,
+            message=message,
+            display_layout=display_layout,
+        )
 
     @classmethod
     def degraded(cls, message: str = "Calibration degraded") -> CalibrationResult:
@@ -84,6 +95,7 @@ class CalibrationOnboardingController:
                 camera_available=result.camera_available,
                 tracker_available=result.tracker_available,
             ),
+            calibration_display_layout=result.display_layout,
             last_status_message=result.message,
         )
 
