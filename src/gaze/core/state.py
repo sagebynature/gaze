@@ -64,6 +64,7 @@ class TargetSummary:
     app_name: str
     confidence: float
     locked: bool
+    owner_process_id: int | None = None
 
     def __post_init__(self) -> None:
         if " - " in self.app_name:

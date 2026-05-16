@@ -54,6 +54,7 @@ class GazeTargetSelectionPipeline:
                 app_name=candidate.app_name,
                 confidence=candidate.confidence,
                 locked=True,
+                owner_process_id=candidate.owner_process_id,
             )
         )
 

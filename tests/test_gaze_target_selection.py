@@ -108,7 +108,7 @@ def test_candidate_must_be_stable_before_becoming_current_target() -> None:
 
     pipeline = GazeTargetSelectionPipeline(stability_ms=400)
     state = _ready_state(sample=_sample(x=150, y=150))
-    candidates = (_candidate("Terminal", x=100, y=100, confidence=0.88),)
+    candidates = (_candidate("Terminal", x=100, y=100, confidence=0.88, owner_process_id=777),)
 
     state = pipeline.apply(state, candidates, now_ms=1000)
     assert state.current_target is None
@@ -117,6 +117,7 @@ def test_candidate_must_be_stable_before_becoming_current_target() -> None:
     assert state.current_target is not None
     assert state.current_target.app_name == "Terminal"
     assert state.current_target.confidence == 0.88
+    assert state.current_target.owner_process_id == 777
     assert state.current_target.locked is True
     assert state.overlay_visible is True
 
