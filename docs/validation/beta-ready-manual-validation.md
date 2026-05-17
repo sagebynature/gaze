@@ -124,6 +124,7 @@ Passed in dev-mode local bundle:
 Known blockers before beta-ready promotion:
 
 - [x] Default release/PyPI bundle Recalibrate no longer fails silently when the desktop calibration UI is unavailable; visible menu reports actionable dev-bundle/provider guidance and remains disabled with calibration retry_required.
+- [x] Re-verified 2026-05-17: default `dist/Gaze.app` visible menu still reports Status: off, Calibration: retry_required, Target: No target, actionable `make app-bundle-pupil-dev PUPIL_TRACKER_PATH=/path/to/pupil-tracker` guidance, and no calibration subprocess launch.
 - [ ] Cmd+G Carbon global hotkey registration is implemented and probe-validated; locked-target bundle revalidation remains pending.
 - [x] Toggle Heatmap no longer silently enables an unwired overlay; runtime reports Heatmap unavailable until a visible heatmap overlay is wired.
 - [ ] Built-in/external display-layout degradation was skipped and remains pending manual evidence.
