@@ -158,6 +158,7 @@ class FakeMenuItem:
 
 class FakeAppKit:
     NSApplicationActivationPolicyAccessory = 1
+    NSVariableStatusItemLength = -1.0
     NSSquareStatusItemLength = -2.0
     NSEventModifierFlagCommand = 1
     NSEventModifierFlagOption = 2
@@ -199,6 +200,8 @@ def test_build_menu_bar_app_creates_status_item_and_menu() -> None:
     runtime = build_menu_bar_app(appkit=appkit, controller=controller, development_mode=True)
 
     assert runtime.app.policy == appkit.NSApplicationActivationPolicyAccessory
+    assert appkit.NSStatusBar._bar.length == appkit.NSVariableStatusItemLength
+    assert runtime.status_item.title == "Gaze"
     assert runtime.status_item.menu is not None
     assert "Status: off" in runtime.status_item.menu.items
     assert "Settings" in runtime.status_item.menu.items

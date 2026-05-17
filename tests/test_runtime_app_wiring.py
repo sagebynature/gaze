@@ -162,6 +162,7 @@ class FakeMenuItem:
 
 class FakeAppKit:
     NSApplicationActivationPolicyAccessory = 1
+    NSVariableStatusItemLength = -1.0
     NSSquareStatusItemLength = -2.0
     NSEventModifierFlagCommand = 1
     NSEventModifierFlagOption = 2

@@ -267,9 +267,9 @@ def build_menu_bar_app(
     app.setActivationPolicy_(runtime_appkit.NSApplicationActivationPolicyAccessory)
 
     status_item = runtime_appkit.NSStatusBar.systemStatusBar().statusItemWithLength_(
-        runtime_appkit.NSSquareStatusItemLength
+        runtime_appkit.NSVariableStatusItemLength
     )
-    status_item.button().setTitle_("◉")
+    status_item.button().setTitle_("Gaze")
 
     dispatcher = MenuActionDispatcher(
         appkit=runtime_appkit,
