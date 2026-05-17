@@ -14,7 +14,13 @@ from typing import Any, Protocol, cast
 
 from gaze.core.state import GazeAppState
 from gaze.desktop.activation import ActivationOutcome
-from gaze.hotkeys.bindings import GAZE_TOGGLE_HOTKEY, MANUAL_ACTIVATE_HOTKEY
+from gaze.hotkeys.bindings import (
+    GAZE_TOGGLE_ACTION,
+    MANUAL_ACTIVATE_ACTION,
+    HotkeyBinding,
+    HotkeySettings,
+    default_hotkey_settings,
+)
 from gaze.hotkeys.commands import GazeCommandController
 from gaze.ui.menu_model import MenuItem, menu_items_for_state
 from gaze.ui.window_factories import create_developer_panel, create_settings_window
@@ -29,10 +35,18 @@ class RuntimeHotkeyRegistry:
     global registration can wrap this registry later without changing command logic.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, *, unavailable_hotkeys: tuple[str, ...] = ()) -> None:
         self._handlers: dict[str, Callable[[], None]] = {}
+        self._unavailable_hotkeys = set(unavailable_hotkeys)
+        self.feedback_messages: list[str] = []
 
-    def register(self, hotkey: str, handler: Callable[[], None]) -> None:
+    def register(self, hotkey: str, handler: Callable[[], None], *, label: str) -> None:
+        if hotkey in self._unavailable_hotkeys:
+            self.feedback_messages.append(f"unavailable {hotkey} for {label}")
+            return
+        if hotkey in self._handlers:
+            self.feedback_messages.append(f"conflict {hotkey} for {label}")
+            return
         self._handlers[hotkey] = handler
 
     def trigger(self, hotkey: str) -> None:
@@ -108,6 +122,7 @@ class MenuBarRuntime:
             self.controller,
             self.development_mode,
             self.action_dispatcher,
+            tuple(self.hotkeys.feedback_messages),
         )
 
 
@@ -225,8 +240,11 @@ def _populate_menu(
     controller: MenuRuntimeController,
     development_mode: bool,
     dispatcher: MenuActionDispatcher,
+    hotkey_feedback: tuple[str, ...] = (),
 ) -> None:
     items = menu_items_for_state(controller.state)
+    for message in hotkey_feedback:
+        items.append(MenuItem(f"Hotkeys: {message}"))
     if development_mode:
         items.append(MenuItem("Open Developer Panel", "developer_panel"))
     for item in items:
@@ -238,6 +256,8 @@ def build_menu_bar_app(
     appkit: Any | None = None,
     controller: MenuRuntimeController,
     development_mode: bool,
+    hotkey_settings: HotkeySettings | None = None,
+    unavailable_hotkeys: tuple[str, ...] = (),
 ) -> MenuBarRuntime:
     runtime_appkit = appkit or _load_appkit()
     app = runtime_appkit.NSApplication.sharedApplication()
@@ -255,7 +275,7 @@ def build_menu_bar_app(
     )
 
     menu = runtime_appkit.NSMenu()
-    hotkeys = RuntimeHotkeyRegistry()
+    hotkeys = RuntimeHotkeyRegistry(unavailable_hotkeys=unavailable_hotkeys)
     runtime = MenuBarRuntime(
         appkit=runtime_appkit,
         app=app,
@@ -279,8 +299,42 @@ def build_menu_bar_app(
             None,
             True,
         )
-    _populate_menu(runtime_appkit, menu, controller, development_mode, dispatcher)
+    settings = hotkey_settings or default_hotkey_settings()
+    _register_runtime_hotkeys(settings, hotkeys, dispatcher)
+    _populate_menu(
+        runtime_appkit,
+        menu,
+        controller,
+        development_mode,
+        dispatcher,
+        tuple(hotkeys.feedback_messages),
+    )
     status_item.setMenu_(menu)
-    hotkeys.register(MANUAL_ACTIVATE_HOTKEY, dispatcher.manual_activate_)
-    hotkeys.register(GAZE_TOGGLE_HOTKEY, dispatcher.toggle_gaze_)
     return runtime
+
+
+def _register_runtime_hotkeys(
+    settings: HotkeySettings,
+    hotkeys: RuntimeHotkeyRegistry,
+    dispatcher: MenuActionDispatcher,
+) -> None:
+    handlers: dict[str, tuple[Callable[[], None], str]] = {
+        MANUAL_ACTIVATE_ACTION: (dispatcher.manual_activate_, "Activate Target"),
+        GAZE_TOGGLE_ACTION: (dispatcher.toggle_gaze_, "Toggle Gaze"),
+    }
+    for binding in settings.bindings:
+        _register_runtime_hotkey(binding, hotkeys, handlers)
+
+
+def _register_runtime_hotkey(
+    binding: HotkeyBinding,
+    hotkeys: RuntimeHotkeyRegistry,
+    handlers: dict[str, tuple[Callable[[], None], str]],
+) -> None:
+    if not binding.enabled:
+        return
+    handler = handlers.get(binding.action)
+    if handler is None:
+        return
+    callback, label = handler
+    hotkeys.register(binding.hotkey, callback, label=label)

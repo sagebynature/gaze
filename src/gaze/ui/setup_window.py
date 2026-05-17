@@ -21,7 +21,7 @@ def setup_sections() -> list[SetupSection]:
             "No recording, no screenshots, no clicks, manual activation only.",
         ),
         SetupSection("Calibration", "Start or retry calibration just in time.", "recalibrate"),
-        SetupSection("Hotkeys", "Edit Cmd+G activation and Option+Cmd+G toggle."),
+        SetupSection("Hotkeys", "Edit Cmd+G activation and Option+Cmd+G toggle.", "hotkeys"),
         SetupSection("Border", "Control target border preview."),
         SetupSection("Heatmap", "Optional session-local diagnostic overlay."),
         SetupSection("Diagnostics", "Scalar-only diagnostics profile."),
