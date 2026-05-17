@@ -83,6 +83,20 @@ class RecordingActivationService:
         return self.outcome
 
 
+class RecordingCalibrationStore:
+    def __init__(self, restored: CalibrationResult | None = None) -> None:
+        self.restored = restored
+        self.restore_layouts: list[DisplayLayoutSnapshot] = []
+        self.saved: list[CalibrationResult] = []
+
+    def restore_for_layout(self, current_layout: DisplayLayoutSnapshot) -> CalibrationResult | None:
+        self.restore_layouts.append(current_layout)
+        return self.restored
+
+    def save(self, result: CalibrationResult) -> None:
+        self.saved.append(result)
+
+
 def layout(display_id: int = 1, *, x: float = 0, width: float = 1440) -> DisplayLayoutSnapshot:
     return DisplayLayoutSnapshot(
         displays=(
@@ -213,6 +227,93 @@ def test_fresh_bridged_sample_after_enable_marks_ready_without_relaunching_calib
     assert controller.state.calibration_display_layout == display_layout
     assert controller.state.current_gaze_sample is not None
     assert controller.state.current_gaze_sample.valid is True
+
+
+def test_restored_last_good_calibration_starts_degraded_without_recalibrating() -> None:
+    from gaze.core.real_trust_preview import RealTrustPreviewController
+
+    display_layout = layout()
+    session = RecordingCalibrationSession(CalibrationResult.ready(display_layout=display_layout))
+    store = RecordingCalibrationStore(
+        CalibrationResult(
+            status=CalibrationStatus.DEGRADED,
+            message="Calibration restored; fresh sample required",
+            camera_available=True,
+            tracker_available=True,
+            display_layout=display_layout,
+        )
+    )
+
+    controller = RealTrustPreviewController(
+        overlay=RecordingBorderOverlay(),
+        activation=RecordingActivationService(),
+        calibration_session=session,
+        sample_source=RecordingSampleSource(),
+        window_provider=RecordingWindowProvider(()),
+        display_provider=RecordingDisplayProvider(display_layout),
+        calibration_store=store,
+    )
+
+    assert session.starts == 0
+    assert store.restore_layouts == [display_layout]
+    assert controller.state.readiness.calibration is CalibrationStatus.DEGRADED
+    assert controller.state.readiness.can_track is True
+    assert controller.state.calibration_display_layout == display_layout
+    assert controller.state.last_status_message == "Calibration restored; fresh sample required"
+
+
+def test_fresh_valid_sample_promotes_restored_degraded_calibration_to_ready() -> None:
+    from gaze.core.real_trust_preview import RealTrustPreviewController
+
+    display_layout = layout()
+    store = RecordingCalibrationStore(
+        CalibrationResult(
+            status=CalibrationStatus.DEGRADED,
+            message="Calibration restored; fresh sample required",
+            camera_available=True,
+            tracker_available=True,
+            display_layout=display_layout,
+        )
+    )
+    controller = RealTrustPreviewController(
+        overlay=RecordingBorderOverlay(),
+        activation=RecordingActivationService(),
+        calibration_session=RecordingCalibrationSession(
+            CalibrationResult.ready(display_layout=display_layout)
+        ),
+        sample_source=RecordingSampleSource(Sample(timestamp=1.0, x=100, y=100, confidence=0.9)),
+        window_provider=RecordingWindowProvider((candidate(),)),
+        display_provider=RecordingDisplayProvider(display_layout),
+        calibration_store=store,
+    )
+
+    controller.enable_gaze()
+    controller.tick(now_seconds=1.0, now_ms=400)
+
+    assert controller.state.readiness.calibration is CalibrationStatus.READY
+    assert controller.state.last_status_message != "Calibration restored; fresh sample required"
+
+
+def test_successful_explicit_calibration_saves_last_good_profile() -> None:
+    from gaze.core.real_trust_preview import RealTrustPreviewController
+
+    display_layout = layout()
+    result = CalibrationResult.ready(display_layout=display_layout)
+    session = RecordingCalibrationSession(result)
+    store = RecordingCalibrationStore()
+    controller = RealTrustPreviewController(
+        overlay=RecordingBorderOverlay(),
+        activation=RecordingActivationService(),
+        calibration_session=session,
+        sample_source=RecordingSampleSource(),
+        window_provider=RecordingWindowProvider(()),
+        display_provider=RecordingDisplayProvider(display_layout),
+        calibration_store=store,
+    )
+
+    controller.start_calibration()
+
+    assert store.saved == [result]
 
 
 def test_tick_locks_real_window_target_and_shows_border_after_stability() -> None:

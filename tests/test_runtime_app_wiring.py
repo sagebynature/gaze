@@ -39,6 +39,19 @@ class StaticDisplayProvider:
         return display_layout()
 
 
+class RecordingCalibrationStore:
+    def __init__(self) -> None:
+        self.saved: list[CalibrationResult] = []
+        self.restore_layouts: list[DisplayLayoutSnapshot] = []
+
+    def restore_for_layout(self, current_layout: DisplayLayoutSnapshot) -> None:
+        self.restore_layouts.append(current_layout)
+        return None
+
+    def save(self, result: CalibrationResult) -> None:
+        self.saved.append(result)
+
+
 def display_layout() -> DisplayLayoutSnapshot:
     return DisplayLayoutSnapshot(
         displays=(
@@ -257,6 +270,28 @@ def test_runtime_factory_wires_recalibrate_to_real_preview_session() -> None:
     assert runtime.controller.state.calibration_display_layout == display_layout()
 
 
+def test_runtime_factory_wires_last_good_calibration_store() -> None:
+    from gaze.app import create_runtime_controller
+
+    session = RecordingCalibrationSession()
+    store = RecordingCalibrationStore()
+    controller = create_runtime_controller(
+        overlay=RecordingBorderOverlay(),
+        activation=FakeActivationService(),
+        calibration_session=session,
+        sample_source=NullSampleSource(),
+        window_provider=EmptyWindowProvider(),
+        display_provider=StaticDisplayProvider(),
+        calibration_store=store,
+    )
+
+    assert store.restore_layouts == [display_layout()]
+
+    controller.start_calibration()
+
+    assert store.saved == [CalibrationResult.ready(display_layout=display_layout())]
+
+
 def test_menu_bar_runtime_schedules_real_preview_tick_driver() -> None:
     FakeTimer.scheduled = []
     controller = TickRecordingController()
@@ -309,6 +344,7 @@ def test_app_main_retains_menu_bar_runtime_for_status_item_lifetime(
     fake_appkit = object()
     fake_controller = object()
     fake_hotkeys = object()
+    fake_store = object()
     captured: dict[str, object] = {}
 
     def fake_import_module(name: str) -> object:
@@ -321,18 +357,27 @@ def test_app_main_retains_menu_bar_runtime_for_status_item_lifetime(
 
     monkeypatch.setattr(app_module, "import_module", fake_import_module)
     monkeypatch.setattr(app_module, "create_appkit_border_overlay", lambda appkit: None)
+    controller_kwargs: dict[str, object] = {}
+
+    def fake_create_runtime_controller(**kwargs: object) -> object:
+        controller_kwargs.update(kwargs)
+        return fake_controller
+
     monkeypatch.setattr(
         app_module,
         "create_runtime_controller",
-        lambda *, overlay: fake_controller,
+        fake_create_runtime_controller,
     )
     monkeypatch.setattr(app_module, "build_menu_bar_app", fake_build_menu_bar_app)
     monkeypatch.setattr(app_module, "CarbonGlobalHotkeyRegistry", lambda: fake_hotkeys)
+    monkeypatch.setattr(app_module, "LastGoodCalibrationStore", lambda path: fake_store)
     monkeypatch.setattr(app_module, "_run_event_loop", lambda appkit: 0)
     monkeypatch.setattr(app_module, "_MENU_BAR_RUNTIME", None, raising=False)
 
     assert app_module.main() == 0
 
+    assert isinstance(controller_kwargs["overlay"], RecordingBorderOverlay)
+    assert controller_kwargs["calibration_store"] is fake_store
     assert captured == {
         "appkit": fake_appkit,
         "controller": fake_controller,

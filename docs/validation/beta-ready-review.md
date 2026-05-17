@@ -36,6 +36,7 @@ The following evidence and fixes must be completed before changing the decision 
 - 2026-05-17 re-run evidence: rebuilt `dist/Gaze.app`, verified the package environment used `CarbonGlobalHotkeyRegistry` with zero registration feedback, sent Cmd+G against a locked target, and observed activation_success with activation_count=1.
 - Toggle Heatmap now clearly reports unavailable when no visible overlay is wired; a rendered session-local heatmap remains optional future polish rather than a silent beta blocker.
 - Display-layout evidence remains hardware-blocked in this run: active display inspection reported one external main display only, so built-in + external layout A/B switching could not be manually validated.
+- Same-layout restart recalibration burden is addressed in code: last-good calibration is persisted as scalar-only display-layout state and restored as degraded-but-usable until a fresh valid sample promotes readiness.
 
 ## Required Manual Scope
 

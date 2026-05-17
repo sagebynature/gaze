@@ -7,6 +7,7 @@ start the camera, enumerate windows, register hotkeys, or activate apps.
 from __future__ import annotations
 
 from importlib import import_module
+from pathlib import Path
 from typing import Any, cast
 
 from gaze.core.real_trust_preview import GazeSampleSource, RealTrustPreviewController
@@ -19,6 +20,7 @@ from gaze.overlays.border import (
     TargetBorderOverlay,
     create_appkit_border_overlay,
 )
+from gaze.settings.calibration_profile import LastGoodCalibrationStore
 from gaze.tracking.calibration import CalibrationSession
 from gaze.tracking.pupil_tracker_runtime import (
     PupilTrackerDesktopCalibrationSession,
@@ -38,6 +40,7 @@ def create_runtime_controller(
     sample_source: GazeSampleSource | None = None,
     window_provider: Any | None = None,
     display_provider: Any | None = None,
+    calibration_store: Any | None = None,
 ) -> RealTrustPreviewController:
     """Compose the real trust-preview runtime without starting side effects."""
 
@@ -53,7 +56,14 @@ def create_runtime_controller(
         sample_source=sample_source or PupilTrackerTelemetrySampleSource(default_bridge_path()),
         window_provider=window_provider or CoreGraphicsVisibleWindowProvider(),
         display_provider=resolved_display_provider,
+        calibration_store=calibration_store,
     )
+
+
+def default_calibration_profile_path() -> Path:
+    """Return the local content-safe last-good calibration profile path."""
+
+    return Path.home() / "Library" / "Application Support" / "Gaze" / "last-good-calibration.json"
 
 
 def main() -> int:
@@ -70,7 +80,10 @@ def main() -> int:
         raise SystemExit(1) from exc
 
     overlay = create_appkit_border_overlay(appkit) or RecordingBorderOverlay()
-    controller = create_runtime_controller(overlay=overlay)
+    controller = create_runtime_controller(
+        overlay=overlay,
+        calibration_store=LastGoodCalibrationStore(default_calibration_profile_path()),
+    )
     _MENU_BAR_RUNTIME = build_menu_bar_app(
         appkit=appkit,
         controller=controller,

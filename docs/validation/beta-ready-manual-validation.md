@@ -134,6 +134,7 @@ Fixes applied during validation:
 
 - [x] AppKit activation lookup now uses the singular process-identifier API; regression coverage added.
 - [x] Missing default-bundle calibration UI now reports actionable guidance instead of generic missing-dependency text.
+- [x] Last-good calibration persistence now prevents same-layout restarts from forcing full recalibration: explicit successful calibration writes a scalar-only local profile, restart restores it as degraded-but-usable, and the first fresh valid sample promotes readiness back to ready.
 
 ## Scalar Summary Export
 

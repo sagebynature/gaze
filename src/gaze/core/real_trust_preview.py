@@ -24,7 +24,11 @@ from gaze.desktop.activation import (
 from gaze.desktop.window_candidates import WindowCandidateSummary
 from gaze.overlays.border import TargetBorderOverlay
 from gaze.overlays.heatmap import HeatmapOverlay, HeatmapPoint
-from gaze.tracking.calibration import CalibrationOnboardingController, CalibrationSession
+from gaze.tracking.calibration import (
+    CalibrationOnboardingController,
+    CalibrationResult,
+    CalibrationSession,
+)
 from gaze.tracking.gaze_pipeline import GazeSamplePipeline, PupilTrackerGazeSample
 
 
@@ -60,6 +64,21 @@ class FeedbackSurface(Protocol):
         ...
 
 
+class CalibrationProfileStore(Protocol):
+    """Content-safe last-good calibration persistence seam."""
+
+    def restore_for_layout(self, current_layout: DisplayLayoutSnapshot) -> CalibrationResult | None:
+        """Return a restored calibration result for the current layout, if usable."""
+        ...
+
+    def save(self, result: CalibrationResult) -> None:
+        """Persist a usable explicit calibration result."""
+        ...
+
+
+_RESTORED_CALIBRATION_MESSAGE = "Calibration restored; fresh sample required"
+
+
 class RealTrustPreviewController:
     """Coordinate the real trust-preview loop without persisting visual content."""
 
@@ -77,6 +96,7 @@ class RealTrustPreviewController:
         diagnostics: ScalarDiagnostics | None = None,
         heatmap: HeatmapOverlay | None = None,
         feedback: FeedbackSurface | None = None,
+        calibration_store: CalibrationProfileStore | None = None,
     ) -> None:
         self._overlay = overlay
         self._activation = activation
@@ -90,7 +110,10 @@ class RealTrustPreviewController:
         self._diagnostics = diagnostics or ScalarDiagnostics(profile=DiagnosticsProfile.release())
         self._heatmap = heatmap
         self._feedback = feedback
+        self._calibration_store = calibration_store
+        self._restored_calibration_pending_fresh_sample = False
         self.state = GazeAppState.default()
+        self._restore_last_good_calibration()
 
     def enable_gaze(self) -> None:
         """Enable trust preview without implicitly starting camera calibration."""
@@ -113,7 +136,12 @@ class RealTrustPreviewController:
     def start_calibration(self) -> None:
         """Run user-initiated calibration through the just-in-time session seam."""
 
-        self.state = self._calibration.run(self.state)
+        calibrating = self._calibration.begin(self.state)
+        result = self._calibration_session.start()
+        self.state = self._calibration.finish(calibrating, result)
+        self._restored_calibration_pending_fresh_sample = False
+        if self._calibration_store is not None:
+            self._calibration_store.save(result)
         self._overlay.hide()
 
     def toggle_border_enabled(self) -> None:
@@ -182,6 +210,7 @@ class RealTrustPreviewController:
                 self._diagnostics.record_state(self.state, now_ms=now_ms)
                 return
 
+        restored_degraded = self._restored_calibration_pending_fresh_sample
         sample = self._sample_source.current_sample()
         if sample is None:
             self.state = self.state.with_target(None)
@@ -215,13 +244,23 @@ class RealTrustPreviewController:
             self._overlay.hide()
             self._diagnostics.record_state(self.state, now_ms=now_ms)
             return
+        current_gaze_sample = self.state.current_gaze_sample
+        if restored_degraded:
+            self.state = replace(
+                self.state,
+                readiness=replace(
+                    self.state.readiness,
+                    calibration=CalibrationStatus.READY,
+                ),
+            )
+            self._restored_calibration_pending_fresh_sample = False
         if self.state.flags.heatmap_enabled and self._heatmap is not None:
             self._heatmap.show()
             self._heatmap.add_point(
                 HeatmapPoint(
-                    x=self.state.current_gaze_sample.x,
-                    y=self.state.current_gaze_sample.y,
-                    confidence=self.state.current_gaze_sample.confidence,
+                    x=current_gaze_sample.x,
+                    y=current_gaze_sample.y,
+                    confidence=current_gaze_sample.confidence,
                 )
             )
 
@@ -247,6 +286,17 @@ class RealTrustPreviewController:
         if self._feedback is not None:
             self._feedback.show(feedback_for_activation(outcome))
         return outcome
+
+    def _restore_last_good_calibration(self) -> None:
+        if self._calibration_store is None:
+            return
+        restored = self._calibration_store.restore_for_layout(
+            self._display_provider.current_layout()
+        )
+        if restored is None:
+            return
+        self.state = self._calibration.finish(self.state, restored)
+        self._restored_calibration_pending_fresh_sample = True
 
     def _targetable_candidates(
         self,
