@@ -2,7 +2,7 @@
 name = "gaze"
 version = "0.1.0"
 description = "macOS native gaze-assisted window focus app powered by PupilTracker."
-readme = "README.md"
+readme = "README-PACKAGE.md"
 requires-python = ">=3.11"
 license = "MIT"
 authors = [{ name = "Sage Choi", email = "sage.choi@gmail.com" }]

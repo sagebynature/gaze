@@ -25,10 +25,10 @@ Gaze is beta-ready for the single-display manual-activation MVP path after local
 
 Validated evidence so far:
 
-- `make check`: 167 tests passing.
-- `make check-pupil-dev PUPIL_TRACKER_PATH=/Users/sage/workspace/sagebynature/pupil-tracker`: 167 tests passing against the editable sibling PupilTracker checkout.
+- `make check`: current branch automated gate.
 - `make app-bundle`: builds `dist/Gaze.app` with bundled Python environment and MediaPipe model.
 - `make smoke-app-status-item`: confirms the bundle launches as a native menu-bar app using scalar-only process and menu-bar geometry evidence.
+- Optional developer-only PupilTracker validation can use `make check-pupil-dev` when changing the sibling tracker.
 - Manual validation has covered launch, setup messaging, calibration, target preview, `Cmd+G` activation, no-target behavior, disable behavior, border toggling, privacy posture, and clean shutdown.
 
 Known limitation:
@@ -96,7 +96,14 @@ make sync
 make check
 ```
 
-During real trust preview work, use the editable sibling PupilTracker checkout when you need local calibration or gaze changes without publishing a package:
+PUPIL_TRACKER_PATH is not required for normal private beta use. Use the default bundle path first:
+
+```bash
+make app-bundle
+open dist/Gaze.app
+```
+
+For source-tree development against an editable sibling checkout, use the explicit developer targets only when changing or validating local PupilTracker internals:
 
 ```bash
 make sync-pupil-dev PUPIL_TRACKER_PATH=/Users/sage/workspace/sagebynature/pupil-tracker
@@ -105,15 +112,15 @@ make check-pupil-dev PUPIL_TRACKER_PATH=/Users/sage/workspace/sagebynature/pupil
 
 Use `check-pupil-dev` or `run-pupil-dev` after editable setup. Those targets pass `uv run --no-sync` so uv does not silently revert the environment back to the locked PyPI package before execution.
 
-For source-tree development against an editable sibling checkout, provide both the sibling checkout and the MediaPipe model path. If the model is missing, download it from the PupilTracker checkout first:
+If `PUPIL_TRACKER_PATH` is not provided to a developer target, the target assumes a project-local sibling at `../pupil-tracker`. This does not affect normal `make app-bundle` use.
+
+For developer runs that also override the MediaPipe model path:
 
 ```bash
 (cd /Users/sage/workspace/sagebynature/pupil-tracker && make download-model)
 PUPIL_TRACKER_MEDIAPIPE_MODEL=/Users/sage/workspace/sagebynature/pupil-tracker/models/face_landmarker.task \
   make run-pupil-dev PUPIL_TRACKER_PATH=/Users/sage/workspace/sagebynature/pupil-tracker
 ```
-
-If `PUPIL_TRACKER_PATH` is not provided, the target assumes a project-local sibling at `../pupil-tracker`.
 
 ## Local `.app` bundle
 
@@ -163,9 +170,14 @@ Use these before claiming the local app is ready:
 
 ```bash
 make check
-make check-pupil-dev PUPIL_TRACKER_PATH=/Users/sage/workspace/sagebynature/pupil-tracker
 make app-bundle
 make smoke-app-status-item
+```
+
+Optional developer-only sibling validation:
+
+```bash
+make check-pupil-dev PUPIL_TRACKER_PATH=/Users/sage/workspace/sagebynature/pupil-tracker
 ```
 
 Repo convention: remove `uv.lock` before committing Gaze changes.

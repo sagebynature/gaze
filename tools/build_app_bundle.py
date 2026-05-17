@@ -126,7 +126,6 @@ Required runtime inputs
 -----------------------
 - The default MediaPipe FaceLandmarker model is bundled under Contents/Resources/models.
 - The default app bundle uses the PyPI/release `pupil-tracker` dependency declared by Gaze.
-- Editable PupilTracker mode is available only through the explicit app-bundle-pupil-dev target.
 
 Recommended rebuild command
 ---------------------------

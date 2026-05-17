@@ -58,6 +58,34 @@ def test_scalar_summary_export_rejects_content_keys_and_non_scalar_values() -> N
         export_scalar_summary_json({"enabled": True, "app": "Terminal"})
 
 
+def test_package_metadata_readme_is_private_beta_safe() -> None:
+    pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
+
+    assert 'readme = "README-PACKAGE.md"' in pyproject
+    package_readme = Path("README-PACKAGE.md").read_text(encoding="utf-8")
+    assert "PUPIL_TRACKER_PATH" not in package_readme
+    assert "app-bundle-pupil-dev" not in package_readme
+    assert "make sync-pupil-dev" not in package_readme
+    assert "make run-pupil-dev" not in package_readme
+
+
+def test_private_beta_docs_keep_default_bundle_separate_from_dev_overrides() -> None:
+    readme = Path("README.md").read_text(encoding="utf-8")
+    checklist = Path("docs/validation/beta-ready-manual-validation.md").read_text(
+        encoding="utf-8"
+    )
+    review = Path("docs/validation/beta-ready-review.md").read_text(encoding="utf-8")
+
+    assert "make app-bundle\nopen dist/Gaze.app" in readme
+    assert "PUPIL_TRACKER_PATH is not required for normal private beta use" in readme
+    assert "default `dist/Gaze.app`" in checklist
+    assert "Open Settings" in checklist
+    assert "Reset Calibration" in checklist
+    assert "dev-bundle/provider guidance" not in checklist
+    assert "actionable `make app-bundle-pupil-dev" not in checklist
+    assert "actionable Open Settings/provider guidance" in review
+
+
 def test_beta_manual_validation_checklist_covers_required_evidence_path() -> None:
     checklist = Path("docs/validation/beta-ready-manual-validation.md").read_text(encoding="utf-8")
 

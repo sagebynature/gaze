@@ -312,8 +312,15 @@ def _calibration_unavailable_guidance(configured_sibling: Path | None) -> str:
         if editable_sibling_source_path(candidate) is not None:
             return _missing_calibration_ui_guidance(candidate)
     if pupil_tracker_available():
-        return _missing_calibration_ui_guidance(configured_sibling)
+        return _packaged_calibration_ui_guidance()
     return missing_pupil_tracker_guidance(configured_sibling or _default_sibling_path())
+
+
+def _packaged_calibration_ui_guidance() -> str:
+    return (
+        "Calibration UI unavailable in this bundle. Open Settings, use Reset Calibration, "
+        "then try Recalibrate again after installing an updated Gaze calibration provider."
+    )
 
 
 def _missing_calibration_ui_guidance(candidate: Path | None) -> str:

@@ -612,8 +612,11 @@ def test_pupil_tracker_calibration_session_reports_calibration_ui_guidance_for_p
 
     assert result.status is CalibrationStatus.RETRY_REQUIRED
     assert "Calibration UI unavailable in this bundle" in result.message
-    assert "make app-bundle-pupil-dev" in result.message
-    assert "/path/to/pupil-tracker" in result.message
+    assert "Open Settings" in result.message
+    assert "Reset Calibration" in result.message
+    assert "make app-bundle-pupil-dev" not in result.message
+    assert "PUPIL_TRACKER_PATH" not in result.message
+    assert "/path/to/pupil-tracker" not in result.message
     assert "/../pupil-tracker" not in result.message
     assert "PupilTracker is not available" not in result.message
     assert launcher.calls == []

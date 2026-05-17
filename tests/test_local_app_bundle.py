@@ -10,6 +10,7 @@ from build_app_bundle import (
     build_app_bundle,
     create_app_launcher,
     create_info_plist,
+    create_local_app_readme,
     install_commands_for_config,
 )
 
@@ -46,6 +47,15 @@ def test_native_launcher_uses_bundled_model_and_no_local_pupil_tracker_path_by_d
     assert "-m" in launcher
     assert "gaze" in launcher
     assert "$SOURCE_TREE" not in launcher
+
+
+def test_default_local_app_readme_avoids_editable_tracker_guidance() -> None:
+    readme = create_local_app_readme(AppBundleConfig(app_name="Gaze"))
+
+    assert "make app-bundle" in readme
+    assert "PUPIL_TRACKER_PATH" not in readme
+    assert "app-bundle-pupil-dev" not in readme
+    assert "editable" not in readme.lower()
 
 
 def test_install_commands_include_project_and_optional_editable_pupil_tracker() -> None:
