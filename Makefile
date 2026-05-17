@@ -1,7 +1,7 @@
 PYTHON ?= python3
 PUPIL_TRACKER_PATH ?= ../pupil-tracker
 
-.PHONY: sync sync-pupil-dev run run-pupil-dev app-bundle app-bundle-pupil-dev test lint typecheck check check-pupil-dev
+.PHONY: sync sync-pupil-dev run run-pupil-dev app-bundle app-bundle-pupil-dev smoke-app-status-item test lint typecheck check check-pupil-dev
 
 sync:
 	uv sync --dev
@@ -20,6 +20,9 @@ app-bundle: sync
 
 app-bundle-pupil-dev: sync-pupil-dev
 	uv run --no-sync python -m tools.build_app_bundle --pupil-tracker-path "$(PUPIL_TRACKER_PATH)"
+
+smoke-app-status-item:
+	uv run python -m tools.smoke_app_bundle_status_item --wait-seconds 20
 
 test:
 	uv run pytest -v

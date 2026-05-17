@@ -73,6 +73,14 @@ open dist/Gaze.app
 
 The local bundle is intentionally unsigned and not notarized. It embeds a Python environment under `dist/Gaze.app/Contents/Resources/.venv`, bundles the model at `dist/Gaze.app/Contents/Resources/models/face_landmarker.task`, and writes a local operator note at `dist/Gaze.app/Contents/Resources/README-local-app.txt`.
 
+After building the bundle, run the privacy-safe LaunchServices status-item smoke before manual validation:
+
+```bash
+make smoke-app-status-item
+```
+
+The smoke emits scalar-only process, menu-bar geometry, and status-scene counts. It does not persist screenshots, frames, window titles, URLs, or raw desktop content.
+
 Required permission posture:
 
 - Camera is requested only when calibration explicitly starts.
