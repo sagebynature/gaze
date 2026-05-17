@@ -5,9 +5,9 @@ Gate: Gate 4 - Beta-ready for Sage
 
 ## Decision
 
-Decision: not beta-ready for daily-driver validation until manual evidence passes.
+Decision: not beta-ready for daily-driver validation until manual evidence passes; the remaining manual evidence is hardware-dependent display-layout coverage.
 
-Rationale: the automated trust chain is in place and the evidence path exists, but the final Sage-only daily-driver decision requires a completed manual checklist plus scalar summary export from the real local `.app` workflow. This review records the current state and blocks promotion until that evidence is filled in.
+Rationale: the automated trust chain is in place, the locked-target Cmd+G evidence path passes, and the scalar summary export is attached, but the final Sage-only daily-driver decision still requires built-in + external display-layout evidence that was not available on the current hardware state.
 
 ## Automated Evidence
 
@@ -25,15 +25,17 @@ These gates cover import safety, fake prototype behavior, real trust preview sea
 The following evidence and fixes must be completed before changing the decision to beta-ready:
 
 - Manual checklist: complete `docs/validation/beta-ready-manual-validation.md`.
-- Scalar summary export: attach or paste the `gaze.scalar-summary.v1` JSON text from the validation run.
+- Scalar summary export: attached in `docs/validation/beta-ready-manual-validation.md` from the locked-target Cmd+G validation run.
 - Hermes/agent cockpit: validate the primary coding cockpit workflow with scalar notes only.
 - Built-in + external display layouts: validate the variable display setups with scalar layout labels only.
 - Failure paths: confirm unavailable activation, no target, degraded calibration, and hotkey conflict behavior.
 - Privacy checks: confirm no visual captures, tracker image data, content-bearing labels, URLs, desktop details, or window titles are recorded.
 - Default release/PyPI bundle Recalibrate reports actionable guidance in the visible menu when the desktop calibration UI is unavailable; it does not launch a calibration subprocess or silently overwrite the guidance while disabled.
 - 2026-05-17 re-run evidence: rebuilt default `dist/Gaze.app`, passed status-item smoke, clicked Recalibrate through the live menu, observed Status: off, Calibration: retry_required, Target: No target, actionable dev-bundle/provider guidance, and no calibration subprocess launch.
-- Cmd+G has Carbon global hotkey registration plus scalar probe evidence; final locked-target bundle revalidation is still required before beta-ready acceptance.
+- Cmd+G has Carbon global hotkey registration plus scalar probe evidence; locked-target bundle revalidation is complete.
+- 2026-05-17 re-run evidence: rebuilt `dist/Gaze.app`, verified the package environment used `CarbonGlobalHotkeyRegistry` with zero registration feedback, sent Cmd+G against a locked target, and observed activation_success with activation_count=1.
 - Toggle Heatmap now clearly reports unavailable when no visible overlay is wired; a rendered session-local heatmap remains optional future polish rather than a silent beta blocker.
+- Display-layout evidence remains hardware-blocked in this run: active display inspection reported one external main display only, so built-in + external layout A/B switching could not be manually validated.
 
 ## Required Manual Scope
 

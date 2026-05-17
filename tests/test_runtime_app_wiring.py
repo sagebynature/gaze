@@ -308,6 +308,7 @@ def test_app_main_retains_menu_bar_runtime_for_status_item_lifetime(
     retained_runtime = object()
     fake_appkit = object()
     fake_controller = object()
+    fake_hotkeys = object()
     captured: dict[str, object] = {}
 
     def fake_import_module(name: str) -> object:
@@ -326,6 +327,7 @@ def test_app_main_retains_menu_bar_runtime_for_status_item_lifetime(
         lambda *, overlay: fake_controller,
     )
     monkeypatch.setattr(app_module, "build_menu_bar_app", fake_build_menu_bar_app)
+    monkeypatch.setattr(app_module, "CarbonGlobalHotkeyRegistry", lambda: fake_hotkeys)
     monkeypatch.setattr(app_module, "_run_event_loop", lambda appkit: 0)
     monkeypatch.setattr(app_module, "_MENU_BAR_RUNTIME", None, raising=False)
 
@@ -335,6 +337,7 @@ def test_app_main_retains_menu_bar_runtime_for_status_item_lifetime(
         "appkit": fake_appkit,
         "controller": fake_controller,
         "development_mode": False,
+        "hotkeys": fake_hotkeys,
     }
     assert app_module._MENU_BAR_RUNTIME is retained_runtime
 

@@ -13,6 +13,7 @@ from gaze.core.real_trust_preview import GazeSampleSource, RealTrustPreviewContr
 from gaze.desktop.activation import AppKitActivationService, TargetActivationService
 from gaze.desktop.display_provider import CoreGraphicsDisplayProvider
 from gaze.desktop.visible_windows import CoreGraphicsVisibleWindowProvider
+from gaze.hotkeys.global_hotkeys import CarbonGlobalHotkeyRegistry
 from gaze.overlays.border import (
     RecordingBorderOverlay,
     TargetBorderOverlay,
@@ -74,6 +75,7 @@ def main() -> int:
         appkit=appkit,
         controller=controller,
         development_mode=False,
+        hotkeys=CarbonGlobalHotkeyRegistry(),
     )
     return _run_event_loop(appkit)
 

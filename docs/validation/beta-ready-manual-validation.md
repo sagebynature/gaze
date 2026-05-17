@@ -99,7 +99,7 @@ Record only pass/fail, category, display layout label, activation outcome, and s
 
 ## Manual Validation Session Notes
 
-Session status: partial pass with beta blockers.
+Session status: partial pass with one hardware-dependent beta blocker.
 
 Passed in dev-mode local bundle:
 
@@ -125,10 +125,10 @@ Known blockers before beta-ready promotion:
 
 - [x] Default release/PyPI bundle Recalibrate no longer fails silently when the desktop calibration UI is unavailable; visible menu reports actionable dev-bundle/provider guidance and remains disabled with calibration retry_required.
 - [x] Re-verified 2026-05-17: default `dist/Gaze.app` visible menu still reports Status: off, Calibration: retry_required, Target: No target, actionable `make app-bundle-pupil-dev PUPIL_TRACKER_PATH=/path/to/pupil-tracker` guidance, and no calibration subprocess launch.
-- [ ] Cmd+G Carbon global hotkey registration is implemented and probe-validated; locked-target bundle revalidation remains pending.
+- [x] Cmd+G Carbon global hotkey registration is implemented and locked-target bundle revalidation passed against the rebuilt `dist/Gaze.app` package environment: Carbon registry active, registration feedback count 0, one Cmd+G event produced activation_success for a locked target.
 - [x] Toggle Heatmap no longer silently enables an unwired overlay; runtime reports Heatmap unavailable until a visible heatmap overlay is wired.
-- [ ] Built-in/external display-layout degradation was skipped and remains pending manual evidence.
-- [ ] Scalar summary export from the live validation run remains pending.
+- [ ] Built-in/external display-layout degradation remains blocked by current hardware state: active display evidence showed one external main display and no built-in + external layouts available to manually switch.
+- [x] Scalar summary export from the locked-target Cmd+G validation run is attached below.
 
 Fixes applied during validation:
 
@@ -152,3 +152,9 @@ Use the `export_scalar_summary_json()` helper with the active diagnostics snapsh
 - `hotkey_registration_issue_count`
 
 The export must reject non-scalar values and content-like fields before the beta-ready review.
+
+Exported scalar summary from the final locked-target Cmd+G validation run:
+
+```json
+{"checklist_id":"gaze-beta-ready-manual-validation","schema_version":"gaze.scalar-summary.v1","summary":{"already_frontmost_count":0,"calibration_state":"ready","display_layout_degraded_events":0,"enabled":true,"hotkey_registration_issue_count":0,"hotkey_registration_status":"ok","last_activation_result":"success","last_confidence":0.91,"lock_duration_ms":0,"no_target_count":0,"target_locked":true}}
+```
