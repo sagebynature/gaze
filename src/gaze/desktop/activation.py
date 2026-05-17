@@ -123,8 +123,8 @@ class AppKitActivationService:
         if self._running_app_lookup is not None:
             return self._running_app_lookup(process_id)
         appkit = cast(Any, __import__("AppKit"))
-        apps = appkit.NSRunningApplication.runningApplicationsWithProcessIdentifier_(process_id)
-        return cast(RunningApplication, apps[0]) if apps else None
+        app = appkit.NSRunningApplication.runningApplicationWithProcessIdentifier_(process_id)
+        return cast(RunningApplication, app) if app is not None else None
 
     def _options(self) -> int:
         if self._activation_options is not None:

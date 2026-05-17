@@ -22,7 +22,7 @@ These gates cover import safety, fake prototype behavior, real trust preview sea
 
 ## Known Blocking Evidence
 
-The following evidence must be completed before changing the decision to beta-ready:
+The following evidence and fixes must be completed before changing the decision to beta-ready:
 
 - Manual checklist: complete `docs/validation/beta-ready-manual-validation.md`.
 - Scalar summary export: attach or paste the `gaze.scalar-summary.v1` JSON text from the validation run.
@@ -30,6 +30,9 @@ The following evidence must be completed before changing the decision to beta-re
 - Built-in + external display layouts: validate the variable display setups with scalar layout labels only.
 - Failure paths: confirm unavailable activation, no target, degraded calibration, and hotkey conflict behavior.
 - Privacy checks: confirm no visual captures, tracker image data, content-bearing labels, URLs, desktop details, or window titles are recorded.
+- Default release/PyPI bundle Recalibrate must show actionable guidance when the desktop calibration source is unavailable.
+- Cmd+G must work as a true global hotkey or be explicitly downgraded from the beta-ready acceptance path.
+- Toggle Heatmap must either render a session-local input-transparent heatmap or clearly report that it is unavailable.
 
 ## Required Manual Scope
 

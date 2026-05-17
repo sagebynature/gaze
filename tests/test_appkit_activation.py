@@ -48,6 +48,20 @@ class FakeWorkspace:
         return self._frontmost
 
 
+class FakeNSRunningApplicationClass:
+    def __init__(self, app: FakeRunningApplication | None) -> None:
+        self._app = app
+        self.looked_up_process_ids: list[int] = []
+
+    def runningApplicationWithProcessIdentifier_(
+        self, process_id: int
+    ) -> FakeRunningApplication | None:
+        self.looked_up_process_ids.append(process_id)
+        if self._app is None or self._app.processIdentifier() != process_id:
+            return None
+        return self._app
+
+
 def ready_state_with_target(
     *,
     owner_process_id: int | None,
@@ -124,6 +138,30 @@ def test_non_frontmost_process_activates_by_process_identity() -> None:
     )
 
     assert outcome == ActivationOutcome.SUCCESS
+    assert app.activation_options == [64]
+
+
+def test_default_appkit_lookup_uses_singular_process_identifier_api(monkeypatch) -> None:
+    app = FakeRunningApplication(process_id=777, active=False, activation_result=True)
+    running_application_class = FakeNSRunningApplicationClass(app)
+    fake_appkit = type(
+        "FakeAppKitModule",
+        (),
+        {"NSRunningApplication": running_application_class},
+    )()
+    monkeypatch.setitem(sys.modules, "AppKit", fake_appkit)
+    service = AppKitActivationService(
+        workspace_factory=lambda: FakeWorkspace(),
+        activation_options=64,
+    )
+
+    outcome = request_manual_activation(
+        ready_state_with_target(owner_process_id=777),
+        service,
+    )
+
+    assert outcome == ActivationOutcome.SUCCESS
+    assert running_application_class.looked_up_process_ids == [777]
     assert app.activation_options == [64]
 
 

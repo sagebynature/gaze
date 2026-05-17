@@ -97,6 +97,42 @@ Record only pass/fail, category, display layout label, activation outcome, and s
 - [ ] Validation notes remain scalar and generic.
 - [ ] Scalar summary export contains only `gaze.scalar-summary.v1` fields and scalar values.
 
+## Manual Validation Session Notes
+
+Session status: partial pass with beta blockers.
+
+Passed in dev-mode local bundle:
+
+- [x] local `.app` launched from `dist/Gaze.app`.
+- [x] menu-bar app appeared without a persistent dashboard requirement.
+- [x] safe default state: Gaze started disabled.
+- [x] disabled activation produced no focus change.
+- [x] settings/setup surface matched the trust-first posture.
+- [x] editable sibling dev-mode bundle launched calibration after explicit Recalibrate.
+- [x] camera/tracking started only after explicit Recalibrate.
+- [x] no Accessibility prompt appeared during the tested flow.
+- [x] explicit Enable Gaze began consuming live scalar samples.
+- [x] target border appeared only after a locked target.
+- [x] border remained non-interactive during validation.
+- [x] menu Activate Target brought the owning app forward after the AppKit lookup fix.
+- [x] already-frontmost activation was a no-op.
+- [x] no-target activation did not bring an app forward.
+- [x] Disable Gaze hid/cleared targeting and blocked activation.
+- [x] privacy posture passed visible UI inspection: no content labels, location strings, visual captures, tracker imagery, desktop payloads, or raw feature vectors were shown in Gaze surfaces.
+- [x] app and calibration subprocesses quit cleanly at the end of the run.
+
+Known blockers before beta-ready promotion:
+
+- [ ] Default release/PyPI bundle Recalibrate produced no actionable visible result when the desktop calibration source was unavailable.
+- [ ] Cmd+G did not work as a true global hotkey while another app was frontmost.
+- [ ] Toggle Heatmap produced no visible effect because the runtime does not wire a real heatmap overlay.
+- [ ] Built-in/external display-layout degradation was skipped and remains pending manual evidence.
+- [ ] Scalar summary export from the live validation run remains pending.
+
+Fix applied during validation:
+
+- [x] AppKit activation lookup now uses the singular process-identifier API; regression coverage added.
+
 ## Scalar Summary Export
 
 Use the `export_scalar_summary_json()` helper with the active diagnostics snapshot. The export may include:
