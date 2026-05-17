@@ -27,6 +27,9 @@ class BorderOverlayStyle:
     opacity: float
     line_width: float
     corner_radius: float
+    glow_radius: float
+    glow_opacity: float
+    outline_opacity: float
 
     @classmethod
     def default(cls) -> BorderOverlayStyle:
@@ -35,9 +38,12 @@ class BorderOverlayStyle:
             can_become_key=False,
             activates_app=False,
             hides_on_deactivate=False,
-            opacity=0.24,
-            line_width=2.0,
+            opacity=0.22,
+            line_width=1.25,
             corner_radius=12.0,
+            glow_radius=16.0,
+            glow_opacity=0.22,
+            outline_opacity=0.72,
         )
 
 
@@ -70,6 +76,9 @@ def appkit_overlay_window_config(style: BorderOverlayStyle) -> dict[str, bool | 
         "opacity": style.opacity,
         "line_width": style.line_width,
         "corner_radius": style.corner_radius,
+        "glow_radius": style.glow_radius,
+        "glow_opacity": style.glow_opacity,
+        "outline_opacity": style.outline_opacity,
         "draws_thin_outline": True,
         "draws_soft_glow": True,
     }
@@ -90,8 +99,8 @@ class AppKitBorderOverlay:
         layer = view.layer()
         layer.setBorderWidth_(self._style.line_width)
         layer.setCornerRadius_(self._style.corner_radius)
-        layer.setShadowOpacity_(self._style.opacity)
-        layer.setShadowRadius_(10.0)
+        layer.setShadowOpacity_(self._style.glow_opacity)
+        layer.setShadowRadius_(self._style.glow_radius)
         return view
 
     def _make_window(self, candidate: WindowCandidateSummary) -> Any:

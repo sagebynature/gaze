@@ -13,6 +13,7 @@ from typing import Any, Protocol, cast
 
 from gaze.core.diagnostics import DiagnosticsProfile, ScalarDiagnostics
 from gaze.core.display_geometry import DisplayLayoutSnapshot
+from gaze.core.feedback import FeedbackEvent, feedback_for_activation
 from gaze.core.state import CalibrationStatus, GazeAppState
 from gaze.core.target_selection import GazeTargetSelectionPipeline, candidate_at_gaze_point
 from gaze.desktop.activation import (
@@ -22,6 +23,7 @@ from gaze.desktop.activation import (
 )
 from gaze.desktop.window_candidates import WindowCandidateSummary
 from gaze.overlays.border import TargetBorderOverlay
+from gaze.overlays.heatmap import HeatmapOverlay, HeatmapPoint
 from gaze.tracking.calibration import CalibrationOnboardingController, CalibrationSession
 from gaze.tracking.gaze_pipeline import GazeSamplePipeline, PupilTrackerGazeSample
 
@@ -50,6 +52,14 @@ class DisplayLayoutProvider(Protocol):
         ...
 
 
+class FeedbackSurface(Protocol):
+    """Shows short-lived, non-modal trust feedback."""
+
+    def show(self, event: FeedbackEvent) -> None:
+        """Show one subtle feedback event."""
+        ...
+
+
 class RealTrustPreviewController:
     """Coordinate the real trust-preview loop without persisting visual content."""
 
@@ -65,6 +75,8 @@ class RealTrustPreviewController:
         gaze_pipeline: GazeSamplePipeline | None = None,
         target_selection: GazeTargetSelectionPipeline | None = None,
         diagnostics: ScalarDiagnostics | None = None,
+        heatmap: HeatmapOverlay | None = None,
+        feedback: FeedbackSurface | None = None,
     ) -> None:
         self._overlay = overlay
         self._activation = activation
@@ -76,6 +88,8 @@ class RealTrustPreviewController:
         self._gaze_pipeline = gaze_pipeline or GazeSamplePipeline()
         self._target_selection = target_selection or GazeTargetSelectionPipeline()
         self._diagnostics = diagnostics or ScalarDiagnostics(profile=DiagnosticsProfile.release())
+        self._heatmap = heatmap
+        self._feedback = feedback
         self.state = GazeAppState.default()
 
     def enable_gaze(self) -> None:
@@ -93,6 +107,8 @@ class RealTrustPreviewController:
 
         self.state = self.state.disable_panic()
         self._overlay.hide()
+        if self._heatmap is not None:
+            self._heatmap.hide()
 
     def start_calibration(self) -> None:
         """Run user-initiated calibration through the just-in-time session seam."""
@@ -122,6 +138,19 @@ class RealTrustPreviewController:
             flags=replace(self.state.flags, heatmap_enabled=enabled),
             last_status_message=("Heatmap on" if enabled else "Heatmap off"),
         )
+        if self._heatmap is None:
+            return
+        if enabled:
+            self._heatmap.show()
+        else:
+            self._heatmap.hide()
+
+    def clear_heatmap_session(self) -> None:
+        """Clear optional session-local heatmap data without hiding it."""
+
+        if self._heatmap is not None:
+            self._heatmap.clear()
+        self.state = replace(self.state, last_status_message="Heatmap cleared")
 
     def tick(self, *, now_seconds: float, now_ms: int) -> None:
         """Advance one real trust-preview frame using scalar-only runtime data."""
@@ -181,6 +210,15 @@ class RealTrustPreviewController:
             self._overlay.hide()
             self._diagnostics.record_state(self.state, now_ms=now_ms)
             return
+        if self.state.flags.heatmap_enabled and self._heatmap is not None:
+            self._heatmap.show()
+            self._heatmap.add_point(
+                HeatmapPoint(
+                    x=self.state.current_gaze_sample.x,
+                    y=self.state.current_gaze_sample.y,
+                    confidence=self.state.current_gaze_sample.confidence,
+                )
+            )
 
         candidates = self._targetable_candidates(self._window_provider.current_candidates())
         self.state = self._target_selection.apply(self.state, candidates, now_ms=now_ms)
@@ -201,6 +239,8 @@ class RealTrustPreviewController:
         }[outcome]
         self.state = replace(self.state, last_status_message=message)
         self._diagnostics.record_activation(outcome)
+        if self._feedback is not None:
+            self._feedback.show(feedback_for_activation(outcome))
         return outcome
 
     def _targetable_candidates(
