@@ -7,6 +7,8 @@ content.
 
 from __future__ import annotations
 
+import json
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import TypeAlias, TypeGuard
 
@@ -28,6 +30,22 @@ _CONTENT_KEYS = frozenset(
     }
 )
 
+_SCALAR_SUMMARY_KEYS = frozenset(
+    {
+        "enabled",
+        "calibration_state",
+        "last_confidence",
+        "target_locked",
+        "lock_duration_ms",
+        "last_activation_result",
+        "already_frontmost_count",
+        "no_target_count",
+        "display_layout_degraded_events",
+        "hotkey_registration_status",
+        "hotkey_registration_issue_count",
+    }
+)
+
 
 @dataclass(frozen=True)
 class DiagnosticsProfile:
@@ -46,6 +64,36 @@ class DiagnosticsProfile:
 
 def default_diagnostics_profile(*, development_mode: bool) -> DiagnosticsProfile:
     return DiagnosticsProfile.dev() if development_mode else DiagnosticsProfile.release()
+
+
+def export_scalar_summary_json(
+    snapshot: Mapping[str, object],
+    *,
+    checklist_id: str = "gaze-beta-ready-manual-validation",
+) -> str:
+    """Export a deterministic content-safe scalar diagnostics summary."""
+
+    summary: dict[str, ScalarValue] = {}
+    for key, value in snapshot.items():
+        if not _is_scalar(value):
+            msg = "scalar summary exports must be scalar-only"
+            raise ValueError(msg)
+        if _content_like_key(key):
+            msg = "scalar summary exports must not include content fields"
+            raise ValueError(msg)
+        if key not in _SCALAR_SUMMARY_KEYS:
+            msg = "scalar summary exports must not include unsupported fields"
+            raise ValueError(msg)
+        summary[key] = value
+    return json.dumps(
+        {
+            "checklist_id": checklist_id,
+            "schema_version": "gaze.scalar-summary.v1",
+            "summary": summary,
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
 
 
 @dataclass
