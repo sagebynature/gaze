@@ -23,8 +23,8 @@ from gaze.overlays.border import (
 from gaze.settings.calibration_profile import LastGoodCalibrationStore
 from gaze.tracking.calibration import CalibrationSession
 from gaze.tracking.pupil_tracker_runtime import (
-    PupilTrackerDesktopCalibrationSession,
     PupilTrackerTelemetrySampleSource,
+    create_default_calibration_provider,
     default_bridge_path,
 )
 from gaze.ui.appkit_shell import build_menu_bar_app
@@ -45,9 +45,10 @@ def create_runtime_controller(
     """Compose the real trust-preview runtime without starting side effects."""
 
     resolved_display_provider = display_provider or CoreGraphicsDisplayProvider()
-    resolved_calibration_session = calibration_session or PupilTrackerDesktopCalibrationSession(
+    bridge_path = default_bridge_path()
+    resolved_calibration_session = calibration_session or create_default_calibration_provider(
         display_provider=resolved_display_provider,
-        bridge_path=default_bridge_path(),
+        bridge_path=bridge_path,
     )
     return RealTrustPreviewController(
         overlay=overlay,

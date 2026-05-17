@@ -18,7 +18,11 @@ from typing import Protocol
 
 from gaze.core.display_geometry import DisplayLayoutSnapshot
 from gaze.core.state import CalibrationStatus
-from gaze.tracking.calibration import CalibrationResult
+from gaze.tracking.calibration import (
+    CalibrationProviderSnapshot,
+    CalibrationResult,
+    CalibrationStage,
+)
 from gaze.tracking.gaze_pipeline import PupilTrackerGazeSample
 from gaze.tracking.pupil_tracker_adapter import (
     editable_sibling_source_path,
@@ -133,8 +137,8 @@ class PupilTrackerTelemetrySampleSource:
         return latest
 
 
-class PupilTrackerDesktopCalibrationSession:
-    """Launch PupilTracker's desktop calibration flow just in time."""
+class PupilTrackerLegacyDesktopDemoProvider:
+    """Internal legacy provider that launches PupilTracker's desktop demo flow."""
 
     def __init__(
         self,
@@ -151,6 +155,15 @@ class PupilTrackerDesktopCalibrationSession:
         self._process_launcher = process_launcher or _launch_process
         self._python_executable = python_executable or sys.executable
         self._process: object | None = None
+        self._snapshot = CalibrationProviderSnapshot(
+            stage=CalibrationStage.UNAVAILABLE,
+            message="Legacy PupilTracker desktop demo provider idle",
+        )
+
+    def snapshot(self) -> CalibrationProviderSnapshot:
+        """Return the latest scalar-only legacy provider snapshot."""
+
+        return self._snapshot
 
     @property
     def bridge_path(self) -> Path:
@@ -169,6 +182,13 @@ class PupilTrackerDesktopCalibrationSession:
         project_root = self._resolve_project_root()
         if project_root is None:
             guidance = _calibration_unavailable_guidance(self._sibling_path)
+            self._snapshot = CalibrationProviderSnapshot(
+                stage=CalibrationStage.UNAVAILABLE,
+                message="Calibration provider unavailable",
+                camera_available=False,
+                tracker_available=False,
+                result_status=CalibrationStatus.RETRY_REQUIRED,
+            )
             return CalibrationResult.unavailable(guidance)
 
         self._bridge_path.parent.mkdir(parents=True, exist_ok=True)
@@ -178,6 +198,13 @@ class PupilTrackerDesktopCalibrationSession:
             [self._python_executable, "-c", _BRIDGE_SCRIPT, str(self._bridge_path)],
             cwd=str(project_root),
             env=env,
+        )
+        self._snapshot = CalibrationProviderSnapshot(
+            stage=CalibrationStage.TARGET_SEQUENCE,
+            message="PupilTracker calibration launched",
+            camera_available=True,
+            tracker_available=True,
+            result_status=CalibrationStatus.CALIBRATING,
         )
         return CalibrationResult(
             status=CalibrationStatus.CALIBRATING,
@@ -192,6 +219,27 @@ class PupilTrackerDesktopCalibrationSession:
             if _desktop_demo_available(candidate):
                 return candidate
         return None
+
+
+class PupilTrackerDesktopCalibrationSession(PupilTrackerLegacyDesktopDemoProvider):
+    """Compatibility wrapper for the legacy desktop demo calibration provider."""
+
+
+def create_default_calibration_provider(
+    *,
+    display_provider: DisplayLayoutProvider,
+    bridge_path: Path | None = None,
+) -> PupilTrackerLegacyDesktopDemoProvider:
+    """Create the current default calibration provider behind the provider seam.
+
+    The default remains the legacy desktop-demo-backed provider during Phase 1,
+    but callers no longer need to know that desktop_demo is the concrete path.
+    """
+
+    return PupilTrackerLegacyDesktopDemoProvider(
+        display_provider=display_provider,
+        bridge_path=bridge_path,
+    )
 
 
 def default_bridge_path() -> Path:

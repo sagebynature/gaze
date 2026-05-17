@@ -270,6 +270,39 @@ def test_runtime_factory_wires_recalibrate_to_real_preview_session() -> None:
     assert runtime.controller.state.calibration_display_layout == display_layout()
 
 
+def test_runtime_factory_uses_default_calibration_provider_factory(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from gaze import app
+
+    session = RecordingCalibrationSession()
+    created: list[object] = []
+
+    def make_provider(
+        *,
+        display_provider: object,
+        bridge_path: Path,
+    ) -> RecordingCalibrationSession:
+        created.extend([display_provider, bridge_path])
+        return session
+
+    monkeypatch.setattr(app, "create_default_calibration_provider", make_provider)
+
+    controller = app.create_runtime_controller(
+        overlay=RecordingBorderOverlay(),
+        activation=FakeActivationService(),
+        sample_source=NullSampleSource(),
+        window_provider=EmptyWindowProvider(),
+        display_provider=StaticDisplayProvider(),
+    )
+
+    controller.start_calibration()
+
+    assert session.starts == 1
+    assert isinstance(created[0], StaticDisplayProvider)
+    assert created[1] == app.default_bridge_path()
+
+
 def test_runtime_factory_wires_last_good_calibration_store() -> None:
     from gaze.app import create_runtime_controller
 
@@ -433,6 +466,34 @@ def test_pupil_tracker_bridge_keeps_tracking_alive_when_demo_window_is_closed() 
     assert "window.closeEvent = hide_demo_window_without_stopping_tracking" in _BRIDGE_SCRIPT
 
 
+def test_pupil_tracker_legacy_desktop_demo_provider_launches_only_on_start(
+    tmp_path: Path,
+) -> None:
+    from gaze.tracking.pupil_tracker_runtime import PupilTrackerLegacyDesktopDemoProvider
+
+    checkout = tmp_path / "pupil-tracker"
+    make_pupil_tracker_checkout(checkout)
+    bridge_path = tmp_path / "bridge" / "gaze-samples.jsonl"
+    launcher = RecordingLauncher()
+    provider = PupilTrackerLegacyDesktopDemoProvider(
+        sibling_path=checkout,
+        display_provider=StaticDisplayProvider(),
+        bridge_path=bridge_path,
+        process_launcher=launcher,
+        python_executable="python-test",
+    )
+
+    assert launcher.calls == []
+    assert provider.snapshot().stage.value == "unavailable"
+
+    result = provider.start()
+
+    assert result.status is CalibrationStatus.CALIBRATING
+    assert provider.snapshot().stage.value == "target_sequence"
+    assert provider.snapshot().message == "PupilTracker calibration launched"
+    assert len(launcher.calls) == 1
+
+
 def test_pupil_tracker_calibration_session_launches_desktop_demo_only_on_start(
     tmp_path: Path,
 ) -> None:
@@ -523,6 +584,8 @@ def test_pupil_tracker_calibration_session_reports_actionable_guidance_without_d
     assert "make app-bundle-pupil-dev" in result.message
     assert "PUPIL_TRACKER_PATH" in result.message
     assert "PupilTracker is not available" not in result.message
+    assert session.snapshot().message == "Calibration provider unavailable"
+    assert str(installed_package_root) not in session.snapshot().message
     assert launcher.calls == []
 
 
