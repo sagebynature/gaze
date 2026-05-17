@@ -179,6 +179,22 @@ def test_real_preview_heatmap_is_opt_in_session_local_and_clearable() -> None:
     assert heatmap.visible is False
 
 
+def test_real_preview_without_heatmap_overlay_reports_unavailable_instead_of_silent_noop() -> None:
+    controller = RealTrustPreviewController(
+        overlay=RecordingBorderOverlay(),
+        activation=FakeActivationService(),
+        calibration_session=RecordingCalibrationSession(),
+        sample_source=RecordingSampleSource(Sample(timestamp=1.0, x=100, y=120, confidence=0.9)),
+        window_provider=RecordingWindowProvider(),
+        display_provider=RecordingDisplayProvider(),
+    )
+
+    controller.toggle_heatmap_enabled()
+
+    assert controller.state.flags.heatmap_enabled is False
+    assert controller.state.last_status_message == "Heatmap unavailable"
+
+
 def test_real_preview_activation_feedback_is_non_modal_and_content_safe() -> None:
     feedback = RecordingFeedbackSurface()
     controller = RealTrustPreviewController(

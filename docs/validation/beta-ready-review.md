@@ -32,7 +32,7 @@ The following evidence and fixes must be completed before changing the decision 
 - Privacy checks: confirm no visual captures, tracker image data, content-bearing labels, URLs, desktop details, or window titles are recorded.
 - Default release/PyPI bundle Recalibrate must show actionable guidance when the desktop calibration source is unavailable.
 - Cmd+G has Carbon global hotkey registration plus scalar probe evidence; final locked-target bundle revalidation is still required before beta-ready acceptance.
-- Toggle Heatmap must either render a session-local input-transparent heatmap or clearly report that it is unavailable.
+- Toggle Heatmap now clearly reports unavailable when no visible overlay is wired; a rendered session-local heatmap remains optional future polish rather than a silent beta blocker.
 
 ## Required Manual Scope
 

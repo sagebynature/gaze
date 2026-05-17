@@ -125,7 +125,7 @@ Known blockers before beta-ready promotion:
 
 - [ ] Default release/PyPI bundle Recalibrate produced no actionable visible result when the desktop calibration source was unavailable.
 - [ ] Cmd+G Carbon global hotkey registration is implemented and probe-validated; locked-target bundle revalidation remains pending.
-- [ ] Toggle Heatmap produced no visible effect because the runtime does not wire a real heatmap overlay.
+- [x] Toggle Heatmap no longer silently enables an unwired overlay; runtime reports Heatmap unavailable until a visible heatmap overlay is wired.
 - [ ] Built-in/external display-layout degradation was skipped and remains pending manual evidence.
 - [ ] Scalar summary export from the live validation run remains pending.
 

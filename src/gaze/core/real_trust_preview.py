@@ -130,16 +130,21 @@ class RealTrustPreviewController:
             self._overlay.hide()
 
     def toggle_heatmap_enabled(self) -> None:
-        """Toggle heatmap state for menu parity; rendering is handled later."""
+        """Toggle heatmap visibility or report that the runtime has no overlay."""
 
+        if self._heatmap is None:
+            self.state = replace(
+                self.state,
+                flags=replace(self.state.flags, heatmap_enabled=False),
+                last_status_message="Heatmap unavailable",
+            )
+            return
         enabled = not self.state.flags.heatmap_enabled
         self.state = replace(
             self.state,
             flags=replace(self.state.flags, heatmap_enabled=enabled),
             last_status_message=("Heatmap on" if enabled else "Heatmap off"),
         )
-        if self._heatmap is None:
-            return
         if enabled:
             self._heatmap.show()
         else:
