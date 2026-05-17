@@ -429,3 +429,68 @@ def test_pupil_tracker_calibration_session_exposes_launched_demo_pid_for_target_
     session.start()
 
     assert session.ignored_owner_process_ids() == frozenset({31337})
+
+
+def test_pupil_tracker_calibration_session_reports_actionable_guidance_without_desktop_demo(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from gaze.tracking import pupil_tracker_runtime
+    from gaze.tracking.pupil_tracker_runtime import PupilTrackerDesktopCalibrationSession
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("PUPIL_TRACKER_PATH", raising=False)
+    monkeypatch.setattr(pupil_tracker_runtime, "_installed_editable_project_root", lambda: None)
+    installed_package_root = tmp_path / "pupil-tracker-release"
+    (installed_package_root / "src" / "pupil_tracker").mkdir(parents=True)
+    (installed_package_root / "pyproject.toml").write_text(
+        '[project]\nname = "pupil-tracker"\n',
+        encoding="utf-8",
+    )
+    launcher = RecordingLauncher()
+    session = PupilTrackerDesktopCalibrationSession(
+        sibling_path=installed_package_root,
+        display_provider=StaticDisplayProvider(),
+        bridge_path=tmp_path / "bridge" / "gaze-samples.jsonl",
+        process_launcher=launcher,
+        python_executable="python-test",
+    )
+
+    result = session.start()
+
+    assert result.status is CalibrationStatus.RETRY_REQUIRED
+    assert result.camera_available is False
+    assert result.tracker_available is False
+    assert "Calibration UI unavailable in this bundle" in result.message
+    assert "make app-bundle-pupil-dev" in result.message
+    assert "PUPIL_TRACKER_PATH" in result.message
+    assert "PupilTracker is not available" not in result.message
+    assert launcher.calls == []
+
+
+def test_pupil_tracker_calibration_session_reports_calibration_ui_guidance_for_packaged_install(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from gaze.tracking import pupil_tracker_runtime
+    from gaze.tracking.pupil_tracker_runtime import PupilTrackerDesktopCalibrationSession
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("PUPIL_TRACKER_PATH", raising=False)
+    monkeypatch.setattr(pupil_tracker_runtime, "_installed_editable_project_root", lambda: None)
+    monkeypatch.setattr(pupil_tracker_runtime, "pupil_tracker_available", lambda: True)
+    launcher = RecordingLauncher()
+    session = PupilTrackerDesktopCalibrationSession(
+        display_provider=StaticDisplayProvider(),
+        bridge_path=tmp_path / "bridge" / "gaze-samples.jsonl",
+        process_launcher=launcher,
+        python_executable="python-test",
+    )
+
+    result = session.start()
+
+    assert result.status is CalibrationStatus.RETRY_REQUIRED
+    assert "Calibration UI unavailable in this bundle" in result.message
+    assert "make app-bundle-pupil-dev" in result.message
+    assert "PupilTracker is not available" not in result.message
+    assert launcher.calls == []

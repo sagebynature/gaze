@@ -23,6 +23,7 @@ from gaze.tracking.gaze_pipeline import PupilTrackerGazeSample
 from gaze.tracking.pupil_tracker_adapter import (
     editable_sibling_source_path,
     missing_pupil_tracker_guidance,
+    pupil_tracker_available,
 )
 
 _BRIDGE_SCRIPT = r'''
@@ -158,7 +159,7 @@ class PupilTrackerDesktopCalibrationSession:
         display_layout = self._display_provider.current_layout()
         project_root = self._resolve_project_root()
         if project_root is None:
-            guidance = missing_pupil_tracker_guidance(_default_sibling_path())
+            guidance = _calibration_unavailable_guidance(self._sibling_path)
             return CalibrationResult.unavailable(guidance)
 
         self._bridge_path.parent.mkdir(parents=True, exist_ok=True)
@@ -247,6 +248,24 @@ def _desktop_demo_available(project_root: Path) -> bool:
     apps_path = project_root / "apps"
     desktop_demo_path = apps_path / "desktop_demo"
     return source_path is not None and desktop_demo_path.is_dir()
+
+
+def _calibration_unavailable_guidance(configured_sibling: Path | None) -> str:
+    for candidate in _candidate_project_roots(configured_sibling):
+        if editable_sibling_source_path(candidate) is not None:
+            return _missing_calibration_ui_guidance(candidate)
+    if pupil_tracker_available():
+        return _missing_calibration_ui_guidance(configured_sibling or _default_sibling_path())
+    return missing_pupil_tracker_guidance(configured_sibling or _default_sibling_path())
+
+
+def _missing_calibration_ui_guidance(candidate: Path) -> str:
+    return (
+        "Calibration UI unavailable in this bundle. The installed PupilTracker package "
+        "does not include the desktop calibration UI required by Recalibrate. Build the "
+        "dev validation bundle with `make app-bundle-pupil-dev "
+        f"PUPIL_TRACKER_PATH={candidate}` or install a PupilTracker calibration provider."
+    )
 
 
 def _bridge_environment(project_root: Path, base_environment: Mapping[str, str]) -> dict[str, str]:
