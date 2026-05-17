@@ -7,7 +7,7 @@ Primary user: Sage
 
 ## Goal
 
-Make Gaze feel like a calm, polished, trustworthy macOS utility that Sage can use daily for manual gaze-assisted app activation.
+Make Gaze feel like a calm, polished, trustworthy macOS utility that Sage can use daily for gaze-assisted app activation, with manual Cmd+G as the default path and opt-in auto-activate available behind clear controls.
 
 This target is not an invite-only beta or public v1. It does not require signed/notarized distribution, updater infrastructure, public support flows, or broad hardware coverage. It does require the product to stop feeling like a prototype on Sage's Mac.
 
@@ -22,9 +22,10 @@ This target is not an invite-only beta or public v1. It does not require signed/
 7. First phase priority: Gaze-owned calibration foundation.
 8. Heatmap scope: remove from user-facing private beta UI; keep internal/developer only if useful.
 9. Target preview privacy: app name only.
-10. Settings scope: essentials only.
+10. Settings scope: essentials plus approved automation controls.
 11. Diagnostics posture: quiet user-facing scalar export.
-12. Plan artifacts: separate design spec and action plan.
+12. Automation scope update: include auto-activate on/off and debounce configuration in the private beta scope, off by default.
+13. Plan artifacts: separate design spec and action plan.
 
 ## Product Posture
 
@@ -41,8 +42,9 @@ The app must not look or behave like a debugging dashboard during normal use.
 
 ## Non-Negotiables
 
-- Manual activation only.
-- No auto-activation in the private beta UI.
+- Manual activation remains the default path.
+- Auto-activation is allowed only as an explicit opt-in setting, off by default, with clear status and an immediate off switch.
+- Auto-activation must use the same owning-app activation path as Cmd+G and must respect lock/debounce/cooldown safeguards.
 - No synthetic clicks.
 - No launch-at-login requirement.
 - No user-facing heatmap control.
@@ -64,6 +66,7 @@ Required daily controls:
 - Current target app name or no target.
 - Lock/activation readiness.
 - Manual activation hint: Cmd+G.
+- Auto-activate mode indicator when enabled.
 - Recalibrate.
 - Settings.
 - Quit.
@@ -71,8 +74,6 @@ Required daily controls:
 User-facing menu should not include:
 
 - Heatmap toggle.
-- Auto-activate controls.
-- Debounce controls.
 - Per-app policy.
 - Developer tuning knobs.
 
@@ -100,6 +101,9 @@ Required sections:
    - Gaze on/off.
    - Target border on/off.
    - Hotkey display/editing.
+   - Auto-activate on/off, clearly off by default.
+   - Auto-activate debounce duration, bounded to safe values.
+   - Clear copy that Cmd+G remains available and disable stops all activation.
 
 4. Privacy
    - Plain explanation of what stays local.
@@ -214,6 +218,9 @@ Scalar diagnostics may include:
 - Gaze enabled state.
 - Confidence/lock metrics.
 - Activation success/failure counts.
+- Auto-activation enabled state.
+- Auto-activation debounce value.
+- Auto-activation trigger/suppression counts.
 - No-target counts.
 - Already-frontmost counts.
 - Display-layout state.
@@ -230,11 +237,11 @@ The private daily-driver beta design is accepted when:
 4. Recalibration from the default app path works without `PUPIL_TRACKER_PATH` as a user-facing requirement.
 5. Heatmap is absent from user-facing beta UI.
 6. Target preview shows app name only.
-7. Settings contains essentials only.
+7. Settings contains essentials plus the approved automation controls: auto-activate on/off and bounded debounce configuration.
 8. Scalar export is present but quiet.
 9. Disable blocks activation, hides overlays, and clears or neutralizes current target/lock/preview state.
 10. Developer diagnostics are absent from the default private beta UI and require an explicit development/debug/profile gate.
-11. Runtime validation proves activation is manual-only and no synthetic-click path is reachable in the private beta runtime.
+11. Runtime validation proves auto-activation is off by default, only runs after explicit opt-in, respects target lock/debounce/cooldown safeguards, and uses no synthetic-click path.
 12. Automated gates and manual private beta validation pass with scalar-only evidence.
 13. Privacy guard tests and checklist coverage explicitly block the full forbidden-data set: screenshots, camera frames, raw visual/video payloads, window titles, document names, URLs, filenames, and raw desktop content across UI, logs, diagnostics/export, tests, docs, and validation evidence.
 
@@ -244,7 +251,6 @@ The private daily-driver beta design is accepted when:
 - Public v1 onboarding/support flows.
 - Signed/notarized distribution.
 - Updater infrastructure.
-- Auto-activation.
 - Synthetic clicks.
 - User-facing heatmap.
 - Window title display.

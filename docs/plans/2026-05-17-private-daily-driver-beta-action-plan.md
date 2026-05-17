@@ -6,7 +6,7 @@ Input spec: `docs/product/2026-05-17-private-daily-driver-beta-design-spec.md`
 
 ## Goal
 
-Ship Gaze as a polished private daily-driver beta for Sage: menu-bar-first, calm premium UX, Gaze-owned guided calibration, manual Cmd+G activation, app-name-only target preview, scalar-only diagnostics, and no user-facing prototype/developer seams.
+Ship Gaze as a polished private daily-driver beta for Sage: menu-bar-first, calm premium UX, Gaze-owned guided calibration, manual Cmd+G by default, opt-in auto-activate with debounce configuration, app-name-only target preview, scalar-only diagnostics, and no user-facing prototype/developer seams.
 
 ## Strategy
 
@@ -31,7 +31,7 @@ Each phase should be implemented with TDD where possible, small commits, and ver
 - Calibration: Gaze-owned UI, PupilTracker engine.
 - Heatmap: not user-facing.
 - Target preview: app name only.
-- Settings: essentials only.
+- Settings: essentials plus approved automation controls for auto-activate on/off and bounded debounce configuration.
 - Diagnostics: quiet scalar export.
 - Distribution: local/private daily-driver build; signed/notarized distribution is not required yet.
 
@@ -62,6 +62,7 @@ graph TD
     E --> E1[Disable/panic invariants]
     E --> E2[App-name-only target contract]
     E --> E3[Scalar diagnostics export]
+    E --> E4[Opt-in auto-activate safeguards]
 
     F --> F1[Default app-bundle path]
     F --> F2[No PUPIL_TRACKER_PATH user requirement]
@@ -173,6 +174,7 @@ Menu bar dropdown:
 - Target app name or no target.
 - Lock/readiness state.
 - Cmd+G hint.
+- Auto-activate mode indicator when enabled.
 - Recalibrate.
 - Settings.
 - Quit.
@@ -184,6 +186,9 @@ Settings window:
 - Gaze on/off.
 - Target border toggle.
 - Hotkey display/editing.
+- Auto-activate on/off, off by default.
+- Bounded debounce configuration.
+- Clear automation safety copy: disable stops all activation, Cmd+G remains available.
 - Privacy summary.
 - Export scalar summary.
 - Reset local calibration.
@@ -191,8 +196,6 @@ Settings window:
 Remove from user-facing UI:
 
 - Heatmap.
-- Auto-activation.
-- Debounce.
 - Per-app policy.
 - Developer tuning knobs.
 
@@ -208,7 +211,8 @@ Remove from user-facing UI:
 ### Acceptance
 
 - Menu remains usable through off, calibrating, ready, degraded, retry, disabled, and no-target states.
-- Settings is essentials-only.
+- Settings is essentials plus the approved automation controls.
+- Auto-activate controls are present but restrained: off by default, clearly labeled, bounded debounce, and never presented as required for daily use.
 - Heatmap is not visible in private beta UI.
 - Target detail is app-name-only.
 - Hotkey conflicts/unavailable states have user-facing feedback.
@@ -235,11 +239,12 @@ Lock down private beta invariants before relying on the app daily.
 ### Scope
 
 - Disable/panic path invariants.
+- Opt-in auto-activation safeguards.
 - App-name-only target contract.
 - Scalar-only diagnostics and export.
 - Same-layout restart restore.
 - Display-layout degradation messaging.
-- Activation outcomes: success, already frontmost, no target, disabled, unavailable.
+- Activation outcomes: success, already frontmost, no target, disabled, unavailable, debounce suppressed, cooldown suppressed.
 - Border visibility and non-interference.
 
 ### Likely Files
@@ -248,6 +253,7 @@ Lock down private beta invariants before relying on the app daily.
 - `src/gaze/core/diagnostics.py`
 - `src/gaze/core/target_selection.py`
 - `src/gaze/desktop/activation.py`
+- `src/gaze/settings/defaults.py`
 - `src/gaze/overlays/border.py`
 - `tests/test_real_trust_preview_controller.py`
 - `tests/test_privacy_*` if needed.
@@ -256,19 +262,21 @@ Lock down private beta invariants before relying on the app daily.
 
 - Disable hides overlays, blocks activation, and clears or neutralizes current target/lock/preview state.
 - Cmd+G activates only when Gaze is enabled and target is locked.
+- Auto-activation is off by default, requires explicit opt-in, uses the same owning-app activation path as Cmd+G, and respects target lock, debounce, cooldown, disabled state, and already-frontmost suppression.
 - No-target and already-frontmost paths are clear, non-crashing states.
 - Scalar export contains no content-bearing fields.
 - Privacy guard tests fail if any forbidden data is added to UI state, logs, diagnostics/export, docs, tests, or validation evidence: screenshots, camera frames, raw visual/video payloads, window titles, document names, URLs, filenames, or raw desktop content.
-- Focused runtime tests prove activation is manual-only and no auto-activation or synthetic-click path is reachable in the private beta runtime.
+- Focused runtime tests prove no synthetic-click path is reachable in either manual or auto-activate mode.
 - Single-display daily path remains stable.
 
 ### Verification
 
 - Focused privacy tests.
 - Focused activation tests.
+- Focused auto-activate/debounce tests.
 - `make check`.
 - Manual disabled/no-target/already-frontmost walkthrough.
-- Manual confirmation that no auto-activation or synthetic click occurs during normal gaze tracking.
+- Manual confirmation that auto-activation is off by default, opt-in only, respects debounce/cooldown, and never synthesizes clicks.
 
 ### Exit Gate
 
@@ -350,11 +358,13 @@ Optional/developer validation:
 - Same-layout restart restore works.
 - Target border lock works.
 - Cmd+G activation works.
+- Auto-activate is off by default; when enabled, it activates only after a locked target satisfies debounce/cooldown safeguards.
 - Disable blocks activation, hides overlays, and clears or neutralizes current target/lock/preview state.
 - App-name-only target preview is enforced.
 - Heatmap is absent from user-facing UI.
 - Developer diagnostics are absent from default private beta UI unless an explicit development/debug/profile gate is active.
-- Auto-activation and synthetic-click paths are absent or unreachable in the private beta runtime.
+- Synthetic-click paths are absent or unreachable in the private beta runtime.
+- Auto-activate opt-in behavior and debounce configuration are validated.
 - Scalar export is content-safe.
 - Known hardware gaps are recorded rather than hidden.
 
@@ -390,7 +400,6 @@ Pause and reassess before proceeding if:
 - Invite-only/public distribution.
 - Signing and notarization.
 - Updater.
-- Auto-activation.
 - Synthetic clicks.
 - User-facing heatmap.
 - Cross-Space activation.
