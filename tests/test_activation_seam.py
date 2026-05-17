@@ -24,6 +24,14 @@ def ready_state_with_target(app_name: str = "Terminal") -> GazeAppState:
     ).with_target(TargetSummary(app_name=app_name, confidence=0.9, locked=True))
 
 
+def test_activation_module_contains_no_synthetic_click_path() -> None:
+    source = __import__("pathlib").Path("src/gaze/desktop/activation.py").read_text()
+
+    forbidden = ("CGEvent", "AXPress", "postEvent", "mouseDown", "mouseUp", "CGWarp")
+
+    assert all(token not in source for token in forbidden)
+
+
 def test_disabled_state_blocks_activation() -> None:
     service = FakeActivationService()
 

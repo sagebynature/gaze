@@ -454,6 +454,109 @@ def test_manual_activation_uses_locked_real_target_process_identity() -> None:
     assert controller.state.last_status_message == "Activated Code"
 
 
+def test_auto_activation_is_off_by_default_even_after_locked_target() -> None:
+    from gaze.core.real_trust_preview import RealTrustPreviewController
+
+    display_layout = layout()
+    activation = RecordingActivationService()
+    controller = RealTrustPreviewController(
+        overlay=RecordingBorderOverlay(),
+        activation=activation,
+        calibration_session=RecordingCalibrationSession(
+            CalibrationResult.ready(display_layout=display_layout)
+        ),
+        sample_source=RecordingSampleSource(
+            Sample(timestamp=1.0, x=100, y=100, confidence=0.9),
+            Sample(timestamp=1.1, x=110, y=100, confidence=0.9),
+        ),
+        window_provider=RecordingWindowProvider((candidate("Code"),)),
+        display_provider=RecordingDisplayProvider(display_layout),
+    )
+
+    controller.enable_gaze()
+    controller.start_calibration()
+    controller.tick(now_seconds=1.0, now_ms=0)
+    controller.tick(now_seconds=1.1, now_ms=400)
+
+    assert controller.state.current_target is not None
+    assert controller.state.current_target.locked is True
+    assert activation.targets == []
+
+
+def test_auto_activation_requires_opt_in_and_debounce_before_using_same_activation_path() -> None:
+    from gaze.core.real_trust_preview import RealTrustPreviewController
+
+    display_layout = layout()
+    activation = RecordingActivationService()
+    controller = RealTrustPreviewController(
+        overlay=RecordingBorderOverlay(),
+        activation=activation,
+        calibration_session=RecordingCalibrationSession(
+            CalibrationResult.ready(display_layout=display_layout)
+        ),
+        sample_source=RecordingSampleSource(
+            Sample(timestamp=1.0, x=100, y=100, confidence=0.9),
+            Sample(timestamp=1.1, x=110, y=100, confidence=0.9),
+            Sample(timestamp=1.8, x=110, y=100, confidence=0.9),
+        ),
+        window_provider=RecordingWindowProvider((candidate("Code"),)),
+        display_provider=RecordingDisplayProvider(display_layout),
+    )
+
+    controller.enable_gaze()
+    controller.start_calibration()
+    controller.set_auto_activate_enabled(True)
+    controller.set_auto_activate_debounce_ms(650)
+    controller.tick(now_seconds=1.0, now_ms=0)
+    controller.tick(now_seconds=1.1, now_ms=400)
+
+    assert activation.targets == []
+
+    controller.tick(now_seconds=1.8, now_ms=1100)
+
+    assert activation.targets == ["Code:4242"]
+    assert controller.state.last_status_message == "Activated Code"
+
+
+def test_auto_activation_respects_cooldown_disable_and_already_frontmost_suppression() -> None:
+    from gaze.core.real_trust_preview import RealTrustPreviewController
+
+    display_layout = layout()
+    activation = RecordingActivationService(outcome=ActivationOutcome.ALREADY_FRONTMOST)
+    controller = RealTrustPreviewController(
+        overlay=RecordingBorderOverlay(),
+        activation=activation,
+        calibration_session=RecordingCalibrationSession(
+            CalibrationResult.ready(display_layout=display_layout)
+        ),
+        sample_source=RecordingSampleSource(
+            Sample(timestamp=1.0, x=100, y=100, confidence=0.9),
+            Sample(timestamp=1.1, x=110, y=100, confidence=0.9),
+            Sample(timestamp=1.8, x=110, y=100, confidence=0.9),
+            Sample(timestamp=2.0, x=110, y=100, confidence=0.9),
+            Sample(timestamp=5.0, x=110, y=100, confidence=0.9),
+        ),
+        window_provider=RecordingWindowProvider((candidate("Code"),)),
+        display_provider=RecordingDisplayProvider(display_layout),
+    )
+
+    controller.enable_gaze()
+    controller.start_calibration()
+    controller.set_auto_activate_enabled(True)
+    controller.tick(now_seconds=1.0, now_ms=0)
+    controller.tick(now_seconds=1.1, now_ms=400)
+    controller.tick(now_seconds=1.8, now_ms=1100)
+    controller.tick(now_seconds=2.0, now_ms=1300)
+
+    assert activation.targets == ["Code:4242"]
+    assert controller.state.last_status_message == "Already frontmost"
+
+    controller.disable_gaze()
+    controller.tick(now_seconds=5.0, now_ms=5000)
+
+    assert activation.targets == ["Code:4242"]
+
+
 def test_display_layout_change_degrades_and_hides_border_without_raw_content() -> None:
     from gaze.core.real_trust_preview import RealTrustPreviewController
 

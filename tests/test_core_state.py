@@ -38,7 +38,19 @@ def test_manual_activation_allowed_when_enabled_and_ready() -> None:
 
 
 def test_auto_activation_stays_disabled_by_default() -> None:
-    assert GazeFeatureFlags().auto_activate_enabled is False
+    flags = GazeFeatureFlags()
+
+    assert flags.auto_activate_enabled is False
+    assert flags.auto_activate_debounce_ms == 650
+
+
+def test_auto_activation_debounce_is_bounded() -> None:
+    assert GazeFeatureFlags(auto_activate_debounce_ms=250).auto_activate_debounce_ms == 250
+    assert GazeFeatureFlags(auto_activate_debounce_ms=2000).auto_activate_debounce_ms == 2000
+    with pytest.raises(ValueError, match="between 250ms and 2000ms"):
+        GazeFeatureFlags(auto_activate_debounce_ms=249)
+    with pytest.raises(ValueError, match="between 250ms and 2000ms"):
+        GazeFeatureFlags(auto_activate_debounce_ms=2001)
 
 
 def test_menu_state_defaults_are_safe_and_off() -> None:

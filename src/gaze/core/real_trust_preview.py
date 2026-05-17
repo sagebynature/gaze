@@ -113,6 +113,11 @@ class RealTrustPreviewController:
         self._feedback = feedback
         self._calibration_store = calibration_store
         self._restored_calibration_pending_fresh_sample = False
+        self._auto_activate_target_key: tuple[str, int | None] | None = None
+        self._auto_activate_locked_since_ms: int | None = None
+        self._last_auto_activation_ms: int | None = None
+        self._last_auto_activation_message: str | None = None
+        self._auto_activate_cooldown_ms = 2500
         self.state = GazeAppState.default()
         self._restore_last_good_calibration()
 
@@ -130,9 +135,31 @@ class RealTrustPreviewController:
         """Panic-disable tracking, overlays, and activation."""
 
         self.state = self.state.disable_panic()
+        self._reset_auto_activation_lock()
         self._overlay.hide()
         if self._heatmap is not None:
             self._heatmap.hide()
+
+    def set_auto_activate_enabled(self, enabled: bool) -> None:
+        """Opt in or out of restrained automatic app activation."""
+
+        self.state = replace(
+            self.state,
+            flags=replace(self.state.flags, auto_activate_enabled=enabled),
+            last_status_message=("Auto-activate on" if enabled else "Auto-activate off"),
+        )
+        if not enabled:
+            self._reset_auto_activation_lock()
+
+    def set_auto_activate_debounce_ms(self, debounce_ms: int) -> None:
+        """Set bounded debounce for optional automatic activation."""
+
+        self.state = replace(
+            self.state,
+            flags=replace(self.state.flags, auto_activate_debounce_ms=debounce_ms),
+            last_status_message=f"Auto-activate delay {debounce_ms}ms",
+        )
+        self._reset_auto_activation_lock()
 
     def start_calibration(self) -> None:
         """Run user-initiated calibration through the just-in-time session seam."""
@@ -279,6 +306,7 @@ class RealTrustPreviewController:
         candidates = self._targetable_candidates(self._window_provider.current_candidates())
         self.state = self._target_selection.apply(self.state, candidates, now_ms=now_ms)
         self._sync_overlay(candidates)
+        self._maybe_auto_activate(now_ms=now_ms)
         self._diagnostics.record_state(self.state, now_ms=now_ms)
 
     def activate(self) -> ActivationOutcome:
@@ -322,6 +350,49 @@ class RealTrustPreviewController:
             for candidate in candidates
             if candidate.owner_process_id not in ignored_owner_process_ids
         )
+
+    def _maybe_auto_activate(self, *, now_ms: int) -> None:
+        target = self.state.current_target
+        if not (
+            self.state.flags.auto_activate_enabled
+            and self.state.flags.gaze_enabled
+            and target is not None
+            and target.locked
+            and self.state.readiness.can_track
+        ):
+            self._reset_auto_activation_lock()
+            return
+
+        target_key = (target.app_name, target.owner_process_id)
+        if target_key != self._auto_activate_target_key:
+            self._auto_activate_target_key = target_key
+            self._auto_activate_locked_since_ms = now_ms
+            return
+
+        if self._auto_activate_locked_since_ms is None:
+            self._auto_activate_locked_since_ms = now_ms
+            return
+
+        stable_ms = now_ms - self._auto_activate_locked_since_ms
+        if stable_ms < self.state.flags.auto_activate_debounce_ms:
+            return
+        if self._last_auto_activation_ms is not None:
+            cooldown_ms = now_ms - self._last_auto_activation_ms
+            if cooldown_ms < self._auto_activate_cooldown_ms:
+                if self._last_auto_activation_message is not None:
+                    self.state = replace(
+                        self.state,
+                        last_status_message=self._last_auto_activation_message,
+                    )
+                return
+
+        self.activate()
+        self._last_auto_activation_ms = now_ms
+        self._last_auto_activation_message = self.state.last_status_message
+
+    def _reset_auto_activation_lock(self) -> None:
+        self._auto_activate_target_key = None
+        self._auto_activate_locked_since_ms = None
 
     def _sync_overlay(self, candidates: tuple[WindowCandidateSummary, ...]) -> None:
         if not (
