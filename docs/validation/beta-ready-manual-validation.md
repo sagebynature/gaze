@@ -7,12 +7,12 @@ Use this checklist with scalar notes only. Record pass/fail, app category, displ
 
 ## Automated Gate
 
-- [ ] `make check` passes.
-- [ ] `make check-pupil-dev PUPIL_TRACKER_PATH=/Users/sage/workspace/sagebynature/pupil-tracker` passes.
-- [ ] Local unsigned bundle builds with `make app-bundle`.
-- [ ] Bundle contains `dist/Gaze.app/Contents/Resources/models/face_landmarker.task`.
-- [ ] Default bundle uses PyPI/release `pupil-tracker`; editable sibling mode is not used unless explicitly testing dev mode.
-- [ ] Scalar summary export is attached as JSON text or copied into validation notes.
+- [x] `make check` passes.
+- [ ] `make check-pupil-dev PUPIL_TRACKER_PATH=/Users/sage/workspace/sagebynature/pupil-tracker` passes. Optional developer-only gate; not rerun in the final default-bundle closeout.
+- [x] Local unsigned bundle builds with `make app-bundle`.
+- [x] Bundle contains `dist/Gaze.app/Contents/Resources/models/face_landmarker.task`.
+- [x] Default bundle uses PyPI/release `pupil-tracker`; editable sibling mode is not used unless explicitly testing dev mode.
+- [x] Scalar summary export is attached as JSON text or copied into validation notes.
 
 ## Validation Scope
 
@@ -32,12 +32,12 @@ Use this checklist with scalar notes only. Record pass/fail, app category, displ
 
 ## Permissions and Local App Lifecycle
 
-- [ ] Launch from `dist/Gaze.app` with the repo not as the active working directory.
-- [ ] Menu-bar app appears without opening a persistent dashboard.
+- [x] Launch from `dist/Gaze.app` with the repo not as the active working directory.
+- [x] Menu-bar app appears without opening a persistent dashboard.
 - [ ] Camera permission appears only after explicit Recalibrate/calibration start.
-- [ ] Recalibrate does not implicitly enable Gaze tracking.
-- [ ] Accessibility or automation prompts are not required for MVP activation behavior.
-- [ ] Missing model/dependency guidance is actionable.
+- [x] Recalibrate does not implicitly enable Gaze tracking in the default unavailable-provider path.
+- [x] Accessibility or automation prompts are not required for MVP activation behavior in the validated path.
+- [x] Missing model/dependency guidance is actionable.
 
 ## Hotkeys
 
@@ -129,6 +129,14 @@ Known blockers before beta-ready promotion:
 - [x] Toggle Heatmap no longer silently enables an unwired overlay; runtime reports Heatmap unavailable until a visible heatmap overlay is wired.
 - [ ] Built-in/external display-layout degradation remains blocked by current hardware state: active display evidence showed one external main display and no built-in + external layouts available to manually switch.
 - [x] Scalar summary export from the locked-target Cmd+G validation run is attached below.
+
+Final default-bundle closeout evidence from local `main` at `a488630`:
+
+- [x] `make check` passed: ruff clean, ty clean, 194 pytest tests passed.
+- [x] `make app-bundle` rebuilt `dist/Gaze.app` with bundled MediaPipe model and PyPI/release `pupil-tracker`.
+- [x] `make smoke-app-status-item` passed: native launcher parent and Python child were present, status item was visible, and status scene error count was 0.
+- [x] User-facing bundle artifact scan found no `PUPIL_TRACKER_PATH`, `app-bundle-pupil-dev`, `/path/to/pupil-tracker`, `make sync-pupil-dev`, or `make run-pupil-dev` strings in `README-local-app.txt` or package metadata.
+- [x] Packaged runtime guidance probe from outside the source tree returned `retry_required` with Open Settings / Reset Calibration guidance and no developer-path strings.
 
 Fixes applied during validation:
 

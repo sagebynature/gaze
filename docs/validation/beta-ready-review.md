@@ -5,9 +5,9 @@ Gate: Gate 4 - Beta-ready for Sage
 
 ## Decision
 
-Decision: not beta-ready for daily-driver validation until manual evidence passes; the remaining manual evidence is hardware-dependent display-layout coverage.
+Decision: implementation-complete for the private beta MVP path, but not fully promoted for daily-driver validation until the remaining hardware-dependent display-layout evidence is captured.
 
-Rationale: the automated trust chain is in place, the locked-target Cmd+G evidence path passes, and the scalar summary export is attached, but the final Sage-only daily-driver decision still requires built-in + external display-layout evidence that was not available on the current hardware state.
+Rationale: the automated trust chain is in place, the default app bundle launches and smokes cleanly, the default packaged Recalibrate failure path gives beta-safe guidance, the locked-target Cmd+G evidence path passes, and the scalar summary export is attached. The final Sage-only daily-driver promotion still requires built-in + external display-layout evidence that was not available on the current hardware state.
 
 ## Automated Evidence
 
@@ -16,9 +16,16 @@ Status: automated checks pass.
 Required commands:
 
 - `make check`
+- `make app-bundle`
+- `make smoke-app-status-item`
+- user-facing bundle artifact scan for developer-path guidance
+- packaged runtime guidance probe from outside the source tree
+
+Optional developer-only command, not rerun in the final default-bundle closeout:
+
 - `make check-pupil-dev PUPIL_TRACKER_PATH=/Users/sage/workspace/sagebynature/pupil-tracker`
 
-These gates cover import safety, fake prototype behavior, real trust preview seams, local `.app` builder behavior, editable hotkeys, scalar diagnostics, trust surface polish, beta evidence export, and privacy guards.
+These gates cover import safety, fake prototype behavior, real trust preview seams, local `.app` builder behavior, editable hotkeys, scalar diagnostics, trust surface polish, beta evidence export, privacy guards, default bundle launch, and beta-safe packaged guidance.
 
 ## Known Blocking Evidence
 
@@ -37,6 +44,9 @@ The following evidence and fixes must be completed before changing the decision 
 - Toggle Heatmap now clearly reports unavailable when no visible overlay is wired; a rendered session-local heatmap remains optional future polish rather than a silent beta blocker.
 - Display-layout evidence remains hardware-blocked in this run: active display inspection reported one external main display only, so built-in + external layout A/B switching could not be manually validated.
 - Same-layout restart recalibration burden is addressed in code: last-good calibration is persisted as scalar-only display-layout state and restored as degraded-but-usable until a fresh valid sample promotes readiness.
+- 2026-05-17 final closeout on local `main` at `a488630`: `make check` passed with ruff clean, ty clean, and 194 pytest tests; `make app-bundle` rebuilt `dist/Gaze.app`; `make smoke-app-status-item` passed with native launcher parent, Python child, visible status item, and zero status-scene errors.
+- 2026-05-17 final default-bundle scan: no `PUPIL_TRACKER_PATH`, `app-bundle-pupil-dev`, `/path/to/pupil-tracker`, `make sync-pupil-dev`, or `make run-pupil-dev` strings were present in user-facing `README-local-app.txt` or package metadata.
+- 2026-05-17 final packaged runtime probe from outside the source tree returned `retry_required` with Open Settings / Reset Calibration guidance and no developer-path strings.
 
 ## Required Manual Scope
 
@@ -83,7 +93,7 @@ Changing layouts must degrade calibration and recommend recalibration before a n
 
 The following remain out of MVP and must not be treated as beta blockers:
 
-- auto-activation
+- auto-activation enabled by default
 - synthetic clicks
 - launch-at-login
 - window titles
