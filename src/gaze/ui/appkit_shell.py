@@ -66,6 +66,7 @@ class RuntimeTickDriver:
     def __init__(self, controller: Any, refresh: Callable[[], None]) -> None:
         self._controller = controller
         self._refresh = refresh
+        self._last_state = getattr(controller, "state", None)
 
     def tick_(self, sender: Any | None = None) -> None:
         tick = getattr(self._controller, "tick", None)
@@ -73,7 +74,10 @@ class RuntimeTickDriver:
             return
         now_seconds = time.monotonic()
         tick(now_seconds=now_seconds, now_ms=int(now_seconds * 1000))
-        self._refresh()
+        current_state = getattr(self._controller, "state", None)
+        if current_state != self._last_state:
+            self._last_state = current_state
+            self._refresh()
 
 
 class MenuRuntimeController(Protocol):

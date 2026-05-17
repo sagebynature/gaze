@@ -29,19 +29,22 @@ def test_info_plist_contains_menu_bar_identity_permissions_and_signing_scope() -
     assert plist["GazeDistributionScope"] == "local-unsigned"
 
 
-def test_launcher_uses_bundled_model_and_no_local_pupil_tracker_path_by_default() -> None:
+def test_native_launcher_uses_bundled_model_and_no_local_pupil_tracker_path_by_default() -> None:
     config = AppBundleConfig(app_name="Gaze")
 
     launcher = create_app_launcher(config)
 
+    assert "#!/bin/zsh" not in launcher
+    assert "NSTask" in launcher
     assert "Resources/.venv/bin/python" in launcher
     assert "PUPIL_TRACKER_MEDIAPIPE_MODEL" in launcher
-    assert 'DEFAULT_MODEL="$APP_ROOT/Resources/models/face_landmarker.task"' in launcher
+    assert "Resources/models/face_landmarker.task" in launcher
     assert "PUPIL_TRACKER_PATH" not in launcher
     assert "make app-bundle" in launcher
     assert "make app-bundle-pupil-dev" not in launcher
     assert "[[ ! -f \"$PUPIL_TRACKER_MEDIAPIPE_MODEL\" ]]" not in launcher
-    assert "exec \"$VENV_PYTHON\" -m gaze" in launcher
+    assert "-m" in launcher
+    assert "gaze" in launcher
     assert "$SOURCE_TREE" not in launcher
 
 
@@ -131,9 +134,9 @@ def test_build_app_bundle_copies_face_landmarker_into_resources(tmp_path: Path) 
     )
     assert bundled_model.read_bytes() == b"fake mediapipe model"
     launcher = result.app_path / "Contents" / "MacOS" / "Gaze"
-    assert 'DEFAULT_MODEL="$APP_ROOT/Resources/models/face_landmarker.task"' in launcher.read_text(
-        encoding="utf-8"
-    )
+    launcher_bytes = launcher.read_bytes()
+    assert not launcher_bytes.startswith(b"#!")
+    assert os.access(launcher, os.X_OK)
 
 
 def test_build_app_bundle_writes_plist_launcher_and_docs_in_dry_run(tmp_path: Path) -> None:
@@ -153,7 +156,7 @@ def test_build_app_bundle_writes_plist_launcher_and_docs_in_dry_run(tmp_path: Pa
     assert plistlib.loads(info_plist.read_bytes())["CFBundleName"] == "Gaze"
     assert launcher.is_file()
     assert os.access(launcher, os.X_OK)
-    assert "PUPIL_TRACKER_MEDIAPIPE_MODEL" in launcher.read_text(encoding="utf-8")
+    assert not launcher.read_bytes().startswith(b"#!")
     assert "Required permissions" in readme.read_text(encoding="utf-8")
     assert not model.exists()
     assert result.install_commands == ()

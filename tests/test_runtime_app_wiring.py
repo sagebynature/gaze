@@ -122,12 +122,14 @@ class FakeMenu:
     def __init__(self) -> None:
         self.items: list[str] = []
         self.raw_items: list[FakeMenuItem] = []
+        self.remove_count = 0
 
     def addItem_(self, item: FakeMenuItem) -> None:
         self.items.append(item.title)
         self.raw_items.append(item)
 
     def removeAllItems(self) -> None:
+        self.remove_count += 1
         self.items = []
         self.raw_items = []
 
@@ -217,6 +219,17 @@ class TickRecordingController:
         self.tick_calls.append((now_seconds, now_ms))
 
 
+class StateChangingTickController(TickRecordingController):
+    def tick(self, *, now_seconds: float, now_ms: int) -> None:
+        from dataclasses import replace
+
+        self.tick_calls.append((now_seconds, now_ms))
+        self.state = replace(
+            self.state,
+            flags=replace(self.state.flags, gaze_enabled=True),
+        )
+
+
 def test_runtime_factory_wires_recalibrate_to_real_preview_session() -> None:
     from gaze.app import create_runtime_controller
 
@@ -263,10 +276,28 @@ def test_menu_bar_runtime_schedules_real_preview_tick_driver() -> None:
     timer.target.tick_(timer)
 
     assert runtime.controller is controller
+    assert runtime.menu.remove_count == 0
     assert len(controller.tick_calls) == 1
     now_seconds, now_ms = controller.tick_calls[0]
     assert now_seconds > 0
     assert now_ms == int(now_seconds * 1000)
+
+
+def test_tick_driver_refreshes_menu_when_controller_state_changes() -> None:
+    FakeTimer.scheduled = []
+    controller = StateChangingTickController()
+
+    runtime = build_menu_bar_app(
+        appkit=FakeAppKit(),
+        controller=controller,
+        development_mode=False,
+        show_launch_window=False,
+    )
+
+    FakeTimer.scheduled[0].target.tick_(FakeTimer.scheduled[0])
+
+    assert runtime.menu.remove_count == 1
+    assert len(controller.tick_calls) == 1
 
 
 def test_app_main_retains_menu_bar_runtime_for_status_item_lifetime(

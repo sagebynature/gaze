@@ -4,7 +4,6 @@ import argparse
 import os
 import plistlib
 import shutil
-import stat
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -60,32 +59,54 @@ def create_info_plist(config: AppBundleConfig) -> dict[str, object]:
 
 
 def create_app_launcher(config: AppBundleConfig) -> str:
-    """Create the shell launcher embedded in Contents/MacOS."""
+    """Create the native launcher source embedded in Contents/MacOS."""
 
-    default_model_path = "$APP_ROOT/Resources/models/face_landmarker.task"
-    return f"""#!/bin/zsh
-set -euo pipefail
+    app_name = _objc_string_literal(config.app_name)
+    return f"""#import <Foundation/Foundation.h>
 
-APP_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-VENV_PYTHON="$APP_ROOT/Resources/.venv/bin/python"
-DEFAULT_MODEL="{default_model_path}"
+// Embedded Python path: Contents/Resources/.venv/bin/python
+// Bundled default model path: Contents/Resources/models/face_landmarker.task
 
-if [[ ! -x "$VENV_PYTHON" ]]; then
-  echo "Gaze local app bundle is missing its embedded Python environment." >&2
-  echo "Rebuild it from the repo with: make app-bundle" >&2
-  exit 70
-fi
+int main(int argc, const char * argv[]) {{
+    @autoreleasepool {{
+        NSBundle *bundle = [NSBundle mainBundle];
+        NSString *resourcesPath = [bundle resourcePath];
+        NSString *venvPython = [resourcesPath stringByAppendingPathComponent:@".venv/bin/python"];
+        NSString *defaultModel = [resourcesPath
+            stringByAppendingPathComponent:@"models/face_landmarker.task"];
 
-if [[ -z "${{PUPIL_TRACKER_MEDIAPIPE_MODEL:-}}" ]]; then
-  export PUPIL_TRACKER_MEDIAPIPE_MODEL="$DEFAULT_MODEL"
-fi
+        if (![[NSFileManager defaultManager] isExecutableFileAtPath:venvPython]) {{
+            NSLog(@"{app_name} local app bundle is missing its embedded Python environment.");
+            NSLog(@"Rebuild it from the repo with: make app-bundle");
+            return 70;
+        }}
 
-# The launcher intentionally does not verify the model file at app start.
-# Missing-model guidance belongs at explicit calibration time so opening the app
-# does not request camera/model prerequisites before the user asks to calibrate.
+        NSMutableDictionary *environment = [[[NSProcessInfo processInfo] environment] mutableCopy];
+        NSString *modelOverride = environment[@"PUPIL_TRACKER_MEDIAPIPE_MODEL"];
+        if (modelOverride == nil || [modelOverride length] == 0) {{
+            environment[@"PUPIL_TRACKER_MEDIAPIPE_MODEL"] = defaultModel;
+        }}
 
-exec "$VENV_PYTHON" -m gaze
+        NSTask *task = [[NSTask alloc] init];
+        task.executableURL = [NSURL fileURLWithPath:venvPython];
+        task.arguments = @[@"-m", @"gaze"];
+        task.environment = environment;
+
+        NSError *error = nil;
+        if (![task launchAndReturnError:&error]) {{
+            NSLog(@"{app_name} failed to launch embedded Python runtime: %@", error);
+            return 70;
+        }}
+
+        [task waitUntilExit];
+        return [task terminationStatus];
+    }}
+}}
 """
+
+
+def _objc_string_literal(value: str) -> str:
+    return value.replace("\\", "\\\\").replace('"', '\\"')
 
 
 def create_local_app_readme(config: AppBundleConfig) -> str:
@@ -166,8 +187,14 @@ def build_app_bundle(
 
     (contents_dir / "Info.plist").write_bytes(plistlib.dumps(create_info_plist(config)))
     launcher_path = macos_dir / config.app_name
-    launcher_path.write_text(create_app_launcher(config), encoding="utf-8")
-    launcher_path.chmod(launcher_path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    launcher_source_path = macos_dir / f"{config.app_name}.m"
+    launcher_source_path.write_text(create_app_launcher(config), encoding="utf-8")
+    _compile_native_launcher(
+        source_path=launcher_source_path,
+        output_path=launcher_path,
+        project_root=project_root,
+    )
+    launcher_source_path.unlink()
     (resources_dir / "README-local-app.txt").write_text(
         create_local_app_readme(config),
         encoding="utf-8",
@@ -226,6 +253,27 @@ def _copy_face_landmarker_model(source: Path, destination: Path) -> None:
         raise FileNotFoundError(msg)
     destination.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(source, destination)
+
+
+def _compile_native_launcher(
+    *,
+    source_path: Path,
+    output_path: Path,
+    project_root: Path,
+) -> None:
+    subprocess.run(
+        [
+            "clang",
+            "-fobjc-arc",
+            "-framework",
+            "Foundation",
+            str(source_path),
+            "-o",
+            str(output_path),
+        ],
+        cwd=project_root,
+        check=True,
+    )
 
 
 def _download_face_landmarker_model(
