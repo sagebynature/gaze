@@ -55,6 +55,32 @@ PUPIL_TRACKER_MEDIAPIPE_MODEL=/Users/sage/workspace/sagebynature/pupil-tracker/m
 
 If `PUPIL_TRACKER_PATH` is not provided, the target assumes a project-local sibling at `../pupil-tracker`.
 
+## Local `.app` bundle
+
+Build a local unsigned development bundle for realistic macOS launch and permission validation:
+
+```bash
+make app-bundle
+open dist/Gaze.app
+```
+
+For the editable sibling PupilTracker workflow, use:
+
+```bash
+(cd /Users/sage/workspace/sagebynature/pupil-tracker && make download-model)
+PUPIL_TRACKER_MEDIAPIPE_MODEL=/Users/sage/workspace/sagebynature/pupil-tracker/models/face_landmarker.task \
+  make app-bundle-pupil-dev PUPIL_TRACKER_PATH=/Users/sage/workspace/sagebynature/pupil-tracker
+open dist/Gaze.app
+```
+
+The local bundle is intentionally unsigned and not notarized. It embeds a Python environment under `dist/Gaze.app/Contents/Resources/.venv`, includes a launcher with missing-model guidance, and writes a local operator note at `dist/Gaze.app/Contents/Resources/README-local-app.txt`.
+
+Required permission posture:
+
+- Camera is requested only when calibration explicitly starts.
+- Accessibility/Input Monitoring are not required for the current MVP path.
+- The launcher and docs must not persist screenshots, frames, window titles, document names, URLs, or raw desktop content.
+
 Launch the current skeleton app:
 
 ```bash
