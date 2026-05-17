@@ -423,6 +423,16 @@ def make_pupil_tracker_checkout(path: Path) -> None:
     (path / "pyproject.toml").write_text('[project]\nname = "pupil-tracker"\n', encoding="utf-8")
 
 
+def test_pupil_tracker_bridge_keeps_tracking_alive_when_demo_window_is_closed() -> None:
+    from gaze.tracking.pupil_tracker_runtime import _BRIDGE_SCRIPT
+
+    assert "setQuitOnLastWindowClosed(False)" in _BRIDGE_SCRIPT
+    assert "def hide_demo_window_without_stopping_tracking(event):" in _BRIDGE_SCRIPT
+    assert "event.ignore()" in _BRIDGE_SCRIPT
+    assert "window.hide()" in _BRIDGE_SCRIPT
+    assert "window.closeEvent = hide_demo_window_without_stopping_tracking" in _BRIDGE_SCRIPT
+
+
 def test_pupil_tracker_calibration_session_launches_desktop_demo_only_on_start(
     tmp_path: Path,
 ) -> None:

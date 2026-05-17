@@ -41,7 +41,16 @@ bridge_path = Path(sys.argv[1])
 bridge_path.parent.mkdir(parents=True, exist_ok=True)
 
 app = create_app(sys.argv)
+app.setQuitOnLastWindowClosed(False)
 window = create_main_window()
+
+
+def hide_demo_window_without_stopping_tracking(event):
+    event.ignore()
+    window.hide()
+
+
+window.closeEvent = hide_demo_window_without_stopping_tracking
 
 
 def bridge_gaze_samples(event_type, payload):

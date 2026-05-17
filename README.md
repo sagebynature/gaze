@@ -7,7 +7,7 @@ The current MVP is trust-first. Nothing activates automatically by default. The 
 ## What works now
 
 - Native macOS menu-bar runtime through PyObjC / AppKit.
-- Explicit PupilTracker calibration with just-in-time camera permission.
+- Explicit PupilTracker calibration with just-in-time camera permission. The Gaze-launched helper window can be closed/hidden after calibration without stopping the live scalar sample bridge.
 - Gaze sample bridge from PupilTracker into Gaze's scalar state model.
 - Visible-window candidate selection through CoreGraphics / Quartz.
 - Privacy-safe current-target preview with no window titles or content-bearing labels in state, logs, docs, or diagnostics.
