@@ -97,6 +97,21 @@ class RuntimeTickDriver:
             self._refresh()
 
 
+class DeferredMenuRefreshTarget:
+    """NSTimer target that refreshes the menu after the active menu action unwinds."""
+
+    def __init__(self, refresh: Callable[[], None], retained_targets: list[Any]) -> None:
+        self._refresh = refresh
+        self._retained_targets = retained_targets
+
+    def refresh_(self, sender: Any | None = None) -> None:
+        try:
+            self._refresh()
+        finally:
+            if self in self._retained_targets:
+                self._retained_targets.remove(self)
+
+
 class MenuRuntimeController(Protocol):
     """Controller surface needed by the menu-bar shell."""
 
@@ -184,6 +199,7 @@ class MenuActionDispatcher:
         self.settings_window: Any | None = None
         self.calibration_window: Any | None = None
         self.developer_panel: Any | None = None
+        self._deferred_refresh_targets: list[Any] = []
 
     def set_refresh_callback(self, refresh: Callable[[], None]) -> None:
         self._refresh = refresh
@@ -191,6 +207,19 @@ class MenuActionDispatcher:
     def _refresh_menu(self) -> None:
         if self._refresh is not None:
             self._refresh()
+
+    def _defer_refresh_menu(self) -> None:
+        if self._refresh is None:
+            return
+        timer_class = getattr(self._appkit, "NSTimer", None)
+        if timer_class is None:
+            self._refresh_menu()
+            return
+        target = DeferredMenuRefreshTarget(self._refresh_menu, self._deferred_refresh_targets)
+        self._deferred_refresh_targets.append(target)
+        schedule_timer_name = "scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_"
+        schedule_timer = getattr(timer_class, schedule_timer_name)
+        schedule_timer(0.0, target, "refresh:", None, False)
 
     def manual_activate_(self, sender: Any | None = None) -> None:
         self._commands.manual_activate_command()
@@ -231,7 +260,7 @@ class MenuActionDispatcher:
             snapshot=_calibration_snapshot_for_controller(self._controller),
         )
         self._commands.recalibrate_command()
-        self._refresh_menu()
+        self._defer_refresh_menu()
 
     def quit_(self, sender: Any | None = None) -> None:
         self._appkit.NSApplication.sharedApplication().terminate_(sender)

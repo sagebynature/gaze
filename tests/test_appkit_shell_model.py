@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from gaze.core.prototype import FakePrototypeController
 from gaze.desktop.activation import FakeActivationService
 from gaze.dev.fakes import FakeTarget
@@ -118,6 +120,27 @@ class FakeTextView:
         self.action_names = names
 
 
+class FakeTimer:
+    scheduled: ClassVar[list[tuple[float, object, str, object, bool]]] = []
+
+    @classmethod
+    def scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
+        cls,
+        interval: float,
+        target,
+        selector: str,
+        user_info,
+        repeats: bool,
+    ):
+        cls.scheduled.append((interval, target, selector, user_info, repeats))
+        return cls.scheduled[-1]
+
+    @classmethod
+    def fire_last(cls) -> None:
+        _interval, target, selector, _user_info, _repeats = cls.scheduled.pop()
+        getattr(target, selector.replace(":", "_"))(None)
+
+
 class FakeMenu:
     def __init__(self) -> None:
         self.items: list[str] = []
@@ -172,6 +195,7 @@ class FakeAppKit:
     NSMenuItem = FakeMenuItem
     NSWindow = FakeWindow
     NSTextView = FakeTextView
+    NSTimer = FakeTimer
 
     @staticmethod
     def NSMakeRect(x, y, width, height):
@@ -255,6 +279,7 @@ def test_recalibrate_menu_opens_gaze_owned_wizard_before_refresh() -> None:
     appkit = FakeAppKit()
     appkit.NSApplication._app = FakeApplication()
     appkit.NSStatusBar._bar = FakeStatusBar()
+    appkit.NSTimer.scheduled = []
     controller = FakePrototypeController(
         overlay=RecordingBorderOverlay(),
         activation=FakeActivationService(),
@@ -272,6 +297,41 @@ def test_recalibrate_menu_opens_gaze_owned_wizard_before_refresh() -> None:
     assert runtime.action_dispatcher.calibration_window.title == "Gaze Calibration"
     assert "Gaze Calibration" in runtime.action_dispatcher.calibration_window.content_text
     assert "No recording" in runtime.action_dispatcher.calibration_window.content_text
+
+
+def test_recalibrate_defers_menu_refresh_until_after_appkit_menu_action_unwinds() -> None:
+    appkit = FakeAppKit()
+    appkit.NSApplication._app = FakeApplication()
+    appkit.NSStatusBar._bar = FakeStatusBar()
+    appkit.NSTimer.scheduled = []
+    controller = FakePrototypeController(
+        overlay=RecordingBorderOverlay(),
+        activation=FakeActivationService(),
+    )
+    runtime = build_menu_bar_app(
+        appkit=appkit,
+        controller=controller,
+        development_mode=False,
+        show_launch_window=False,
+    )
+    remove_count = 0
+    original_remove_all_items = runtime.menu.removeAllItems
+
+    def count_remove_all_items() -> None:
+        nonlocal remove_count
+        remove_count += 1
+        original_remove_all_items()
+
+    runtime.menu.removeAllItems = count_remove_all_items
+
+    runtime.action_dispatcher.recalibrate_()
+
+    assert remove_count == 0
+    assert appkit.NSTimer.scheduled[-1][0] == 0.0
+
+    appkit.NSTimer.fire_last()
+
+    assert remove_count == 1
 
 
 def test_build_menu_bar_app_can_skip_launch_setup_window_for_headless_tests() -> None:
