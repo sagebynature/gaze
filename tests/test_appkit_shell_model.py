@@ -240,13 +240,38 @@ def test_build_menu_bar_app_shows_launch_setup_window_by_default() -> None:
     assert runtime.launch_window.shown is True
     assert runtime.launch_window.title == "Gaze Setup"
     assert runtime.launch_window.content_rect == (0, 0, 460, 360)
-    assert "Gaze is running" in runtime.launch_window.content_text
-    assert "menu bar" in runtime.launch_window.content_text
-    assert "Recalibrate" in runtime.launch_window.content_text
-    assert "camera access" in runtime.launch_window.content_text
+    assert "Gaze Calibration" in runtime.launch_window.content_text
+    assert "Privacy" in runtime.launch_window.content_text
+    assert "Readiness" in runtime.launch_window.content_text
+    assert "Calibration Targets" in runtime.launch_window.content_text
+    assert "Result" in runtime.launch_window.content_text
+    assert "camera access starts only when you ask" in runtime.launch_window.content_text.lower()
     assert "recalibrate" in runtime.launch_window.action_names
     assert appkit.NSApplication._app.activated_ignoring_other_apps is True
     assert controller.state.flags.gaze_enabled is False
+
+
+def test_recalibrate_menu_opens_gaze_owned_wizard_before_refresh() -> None:
+    appkit = FakeAppKit()
+    appkit.NSApplication._app = FakeApplication()
+    appkit.NSStatusBar._bar = FakeStatusBar()
+    controller = FakePrototypeController(
+        overlay=RecordingBorderOverlay(),
+        activation=FakeActivationService(),
+    )
+    runtime = build_menu_bar_app(
+        appkit=appkit,
+        controller=controller,
+        development_mode=False,
+        show_launch_window=False,
+    )
+
+    runtime.action_dispatcher.recalibrate_()
+
+    assert runtime.action_dispatcher.calibration_window is not None
+    assert runtime.action_dispatcher.calibration_window.title == "Gaze Calibration"
+    assert "Gaze Calibration" in runtime.action_dispatcher.calibration_window.content_text
+    assert "No recording" in runtime.action_dispatcher.calibration_window.content_text
 
 
 def test_build_menu_bar_app_can_skip_launch_setup_window_for_headless_tests() -> None:

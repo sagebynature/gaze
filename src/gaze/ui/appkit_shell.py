@@ -26,8 +26,10 @@ from gaze.hotkeys.bindings import (
 )
 from gaze.hotkeys.commands import GazeCommandController
 from gaze.hotkeys.global_hotkeys import CarbonGlobalHotkeyRegistry
+from gaze.tracking.calibration import CalibrationProviderSnapshot
 from gaze.ui.menu_model import MenuItem, menu_items_for_state
 from gaze.ui.window_factories import (
+    create_calibration_wizard_window,
     create_developer_panel,
     create_launch_setup_window,
     create_settings_window,
@@ -125,6 +127,18 @@ class MenuRuntimeController(Protocol):
         ...
 
 
+def _calibration_snapshot_for_controller(
+    controller: MenuRuntimeController,
+) -> CalibrationProviderSnapshot | None:
+    snapshot = getattr(controller, "calibration_snapshot", None)
+    if snapshot is None:
+        return None
+    candidate = snapshot()
+    if isinstance(candidate, CalibrationProviderSnapshot):
+        return candidate
+    return None
+
+
 @dataclass
 class MenuBarRuntime:
     appkit: Any
@@ -168,6 +182,7 @@ class MenuActionDispatcher:
         self._development_mode = development_mode
         self._refresh: Callable[[], None] | None = None
         self.settings_window: Any | None = None
+        self.calibration_window: Any | None = None
         self.developer_panel: Any | None = None
 
     def set_refresh_callback(self, refresh: Callable[[], None]) -> None:
@@ -211,6 +226,10 @@ class MenuActionDispatcher:
         self._refresh_menu()
 
     def recalibrate_(self, sender: Any | None = None) -> None:
+        self.calibration_window = create_calibration_wizard_window(
+            self._appkit,
+            snapshot=_calibration_snapshot_for_controller(self._controller),
+        )
         self._commands.recalibrate_command()
         self._refresh_menu()
 

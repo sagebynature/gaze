@@ -5,9 +5,14 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
+from gaze.tracking.calibration import CalibrationProviderSnapshot
 from gaze.ui.developer_actions import DeveloperPanelActions
 from gaze.ui.developer_panel import DeveloperControl, developer_controls
-from gaze.ui.setup_window import setup_sections
+from gaze.ui.setup_window import (
+    default_calibration_wizard_snapshot,
+    render_calibration_wizard_text,
+    setup_sections,
+)
 
 _RETAINED_DEVELOPER_TARGETS: list[DeveloperPanelActionTarget] = []
 
@@ -161,21 +166,36 @@ def create_settings_window(appkit: Any | None) -> Any | None:
     )
 
 
+def create_calibration_wizard_window(
+    appkit: Any | None,
+    *,
+    snapshot: CalibrationProviderSnapshot | None = None,
+) -> Any | None:
+    if appkit is None or not hasattr(appkit, "NSWindow"):
+        return None
+    safe_snapshot = snapshot or default_calibration_wizard_snapshot()
+    return _show_window(
+        _utility_window(appkit, width=460, height=420),
+        title="Gaze Calibration",
+        content_view=_text_view(
+            appkit,
+            render_calibration_wizard_text(safe_snapshot),
+            action_names=["recalibrate", "settings"],
+        ),
+    )
+
+
 def create_launch_setup_window(appkit: Any | None) -> Any | None:
     if appkit is None:
         return None
-    text = (
-        "Gaze is running.\n\n"
-        "Use the Gaze item in the menu bar for controls.\n\n"
-        "Recalibrate starts camera access only when you ask for calibration.\n\n"
-        "After calibration, enable Gaze explicitly. Cmd+G activates a locked target; "
-        "Option+Cmd+G toggles Gaze off.\n\n"
-        "No recording, screenshots, window titles, or raw desktop content are saved."
-    )
     return _show_window(
         _utility_window(appkit, width=460, height=360),
         title="Gaze Setup",
-        content_view=_text_view(appkit, text, action_names=["recalibrate", "settings"]),
+        content_view=_text_view(
+            appkit,
+            render_calibration_wizard_text(default_calibration_wizard_snapshot()),
+            action_names=["recalibrate", "settings"],
+        ),
     )
 
 

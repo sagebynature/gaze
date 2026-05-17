@@ -26,6 +26,7 @@ from gaze.overlays.border import TargetBorderOverlay
 from gaze.overlays.heatmap import HeatmapOverlay, HeatmapPoint
 from gaze.tracking.calibration import (
     CalibrationOnboardingController,
+    CalibrationProviderSnapshot,
     CalibrationResult,
     CalibrationSession,
 )
@@ -143,6 +144,17 @@ class RealTrustPreviewController:
         if self._calibration_store is not None:
             self._calibration_store.save(result)
         self._overlay.hide()
+
+    def calibration_snapshot(self) -> CalibrationProviderSnapshot | None:
+        """Return provider wizard state without starting camera or calibration."""
+
+        snapshot = getattr(self._calibration_session, "snapshot", None)
+        if snapshot is None:
+            return None
+        candidate = snapshot()
+        if isinstance(candidate, CalibrationProviderSnapshot):
+            return candidate
+        return None
 
     def toggle_border_enabled(self) -> None:
         """Toggle the target border without changing calibration or gaze state."""

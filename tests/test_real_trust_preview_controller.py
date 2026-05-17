@@ -9,7 +9,11 @@ from gaze.core.state import CalibrationStatus
 from gaze.desktop.activation import ActivationOutcome
 from gaze.desktop.window_candidates import WindowCandidateSummary
 from gaze.overlays.border import RecordingBorderOverlay
-from gaze.tracking.calibration import CalibrationResult
+from gaze.tracking.calibration import (
+    CalibrationProviderSnapshot,
+    CalibrationResult,
+    CalibrationStage,
+)
 from gaze.tracking.gaze_pipeline import PupilTrackerGazeSample
 
 
@@ -28,14 +32,22 @@ class RecordingCalibrationSession:
         result: CalibrationResult,
         *,
         ignored_owner_process_ids: frozenset[int] = frozenset(),
+        snapshot: CalibrationProviderSnapshot | None = None,
     ) -> None:
         self.result = result
         self.starts = 0
         self._ignored_owner_process_ids = ignored_owner_process_ids
+        self._snapshot = snapshot or CalibrationProviderSnapshot(
+            stage=CalibrationStage.PRIVACY,
+            message="Private by design",
+        )
 
     def start(self) -> CalibrationResult:
         self.starts += 1
         return self.result
+
+    def snapshot(self) -> CalibrationProviderSnapshot:
+        return self._snapshot
 
     def ignored_owner_process_ids(self) -> frozenset[int]:
         return self._ignored_owner_process_ids
@@ -140,6 +152,31 @@ def test_real_trust_preview_import_is_safe() -> None:
 
     assert "AppKit" not in sys.modules
     assert "Quartz" not in sys.modules
+
+
+def test_real_preview_exposes_gaze_owned_calibration_snapshot_for_wizard() -> None:
+    from gaze.core.real_trust_preview import RealTrustPreviewController
+
+    provider_snapshot = CalibrationProviderSnapshot(
+        stage=CalibrationStage.READINESS,
+        message="Checking camera",
+        camera_available=True,
+    )
+    session = RecordingCalibrationSession(
+        CalibrationResult.ready(display_layout=layout()),
+        snapshot=provider_snapshot,
+    )
+    controller = RealTrustPreviewController(
+        overlay=RecordingBorderOverlay(),
+        activation=RecordingActivationService(),
+        calibration_session=session,
+        sample_source=RecordingSampleSource(),
+        window_provider=RecordingWindowProvider(()),
+        display_provider=RecordingDisplayProvider(layout()),
+    )
+
+    assert controller.calibration_snapshot() == provider_snapshot
+    assert session.starts == 0
 
 
 def test_calibration_is_started_only_by_explicit_recalibration() -> None:

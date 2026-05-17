@@ -1,5 +1,15 @@
+from gaze.core.state import CalibrationStatus
+from gaze.tracking.calibration import (
+    CalibrationProviderSnapshot,
+    CalibrationStage,
+    CalibrationTargetPoint,
+)
 from gaze.ui.developer_panel import developer_controls
-from gaze.ui.setup_window import setup_sections
+from gaze.ui.setup_window import (
+    calibration_wizard_steps,
+    render_calibration_wizard_text,
+    setup_sections,
+)
 
 
 def test_setup_window_contains_mvp_essentials_only() -> None:
@@ -16,6 +26,45 @@ def test_setup_window_contains_mvp_essentials_only() -> None:
     ]
     assert "Auto Activation" not in labels
     assert "Per-App Policy" not in labels
+
+
+def test_gaze_owned_calibration_wizard_models_four_trust_steps() -> None:
+    snapshot = CalibrationProviderSnapshot(
+        stage=CalibrationStage.TARGET_SEQUENCE,
+        message="Follow the target",
+        current_target=CalibrationTargetPoint(x=0.5, y=0.5, index=2, total=5),
+        progress=0.4,
+    )
+
+    steps = calibration_wizard_steps(snapshot)
+
+    assert [step.label for step in steps] == [
+        "Privacy",
+        "Readiness",
+        "Calibration Targets",
+        "Result",
+    ]
+    assert [step.state for step in steps] == ["complete", "complete", "current", "pending"]
+    assert steps[0].description == "Camera access starts only when you ask to calibrate."
+    assert steps[2].detail == "Target 2 of 5"
+
+
+def test_gaze_owned_calibration_wizard_renders_content_safe_copy() -> None:
+    text = render_calibration_wizard_text(
+        CalibrationProviderSnapshot(
+            stage=CalibrationStage.RESULT,
+            message="Ready",
+            result_status=CalibrationStatus.READY,
+            quality={"mean_error_px": 3.2, "recommendation": "good"},
+        )
+    )
+
+    assert "Gaze Calibration" in text
+    assert "No recording, screenshots, window titles, URLs, filenames, or desktop content" in text
+    assert "Ready" in text
+    assert "mean_error_px" not in text
+    forbidden = ["/Users/", "/tmp/", "http://", "https://", "window title:"]
+    assert not any(token in text for token in forbidden)
 
 
 def test_developer_panel_controls_are_separate_from_setup() -> None:
