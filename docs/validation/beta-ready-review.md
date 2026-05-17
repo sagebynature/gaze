@@ -30,7 +30,7 @@ The following evidence and fixes must be completed before changing the decision 
 - Built-in + external display layouts: validate the variable display setups with scalar layout labels only.
 - Failure paths: confirm unavailable activation, no target, degraded calibration, and hotkey conflict behavior.
 - Privacy checks: confirm no visual captures, tracker image data, content-bearing labels, URLs, desktop details, or window titles are recorded.
-- Default release/PyPI bundle Recalibrate now reports actionable guidance when the desktop calibration UI is unavailable; final default-bundle visible-menu revalidation remains pending.
+- Default release/PyPI bundle Recalibrate reports actionable guidance in the visible menu when the desktop calibration UI is unavailable; it does not launch a calibration subprocess or silently overwrite the guidance while disabled.
 - Cmd+G has Carbon global hotkey registration plus scalar probe evidence; final locked-target bundle revalidation is still required before beta-ready acceptance.
 - Toggle Heatmap now clearly reports unavailable when no visible overlay is wired; a rendered session-local heatmap remains optional future polish rather than a silent beta blocker.
 

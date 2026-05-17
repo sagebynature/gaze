@@ -161,7 +161,7 @@ class RealTrustPreviewController:
         """Advance one real trust-preview frame using scalar-only runtime data."""
 
         if not self.state.flags.gaze_enabled:
-            self.state = self.state.with_target(None)
+            self.state = replace(self.state, current_target=None, overlay_visible=False)
             self._overlay.hide()
             self._diagnostics.record_state(self.state, now_ms=now_ms)
             return

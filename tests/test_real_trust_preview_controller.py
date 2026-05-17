@@ -344,6 +344,27 @@ def test_display_layout_change_degrades_and_hides_border_without_raw_content() -
     assert " - " not in controller.state.last_status_message
 
 
+def test_disabled_tick_preserves_recalibration_failure_guidance() -> None:
+    from gaze.core.real_trust_preview import RealTrustPreviewController
+
+    controller = RealTrustPreviewController(
+        overlay=RecordingBorderOverlay(),
+        activation=RecordingActivationService(),
+        calibration_session=RecordingCalibrationSession(
+            CalibrationResult.unavailable("Calibration UI unavailable in this bundle")
+        ),
+        sample_source=RecordingSampleSource(),
+        window_provider=RecordingWindowProvider(()),
+        display_provider=RecordingDisplayProvider(layout()),
+    )
+
+    controller.start_calibration()
+    controller.tick(now_seconds=1.0, now_ms=400)
+
+    assert controller.state.readiness.calibration is CalibrationStatus.RETRY_REQUIRED
+    assert controller.state.last_status_message == "Calibration UI unavailable in this bundle"
+
+
 def test_tick_while_disabled_does_not_touch_camera_windows_or_displays() -> None:
     from gaze.core.real_trust_preview import RealTrustPreviewController
 

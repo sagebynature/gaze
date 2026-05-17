@@ -255,16 +255,17 @@ def _calibration_unavailable_guidance(configured_sibling: Path | None) -> str:
         if editable_sibling_source_path(candidate) is not None:
             return _missing_calibration_ui_guidance(candidate)
     if pupil_tracker_available():
-        return _missing_calibration_ui_guidance(configured_sibling or _default_sibling_path())
+        return _missing_calibration_ui_guidance(configured_sibling)
     return missing_pupil_tracker_guidance(configured_sibling or _default_sibling_path())
 
 
-def _missing_calibration_ui_guidance(candidate: Path) -> str:
+def _missing_calibration_ui_guidance(candidate: Path | None) -> str:
+    path_hint = str(candidate) if candidate is not None else "/path/to/pupil-tracker"
     return (
         "Calibration UI unavailable in this bundle. The installed PupilTracker package "
         "does not include the desktop calibration UI required by Recalibrate. Build the "
         "dev validation bundle with `make app-bundle-pupil-dev "
-        f"PUPIL_TRACKER_PATH={candidate}` or install a PupilTracker calibration provider."
+        f"PUPIL_TRACKER_PATH={path_hint}` or install a PupilTracker calibration provider."
     )
 
 
