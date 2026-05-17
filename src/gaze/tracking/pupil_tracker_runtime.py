@@ -146,6 +146,14 @@ class PupilTrackerDesktopCalibrationSession:
     def bridge_path(self) -> Path:
         return self._bridge_path
 
+    def ignored_owner_process_ids(self) -> frozenset[int]:
+        """Return launched PupilTracker demo PIDs that must not be gaze targets."""
+
+        pid = getattr(self._process, "pid", None)
+        if not isinstance(pid, int):
+            return frozenset()
+        return frozenset({pid})
+
     def start(self) -> CalibrationResult:
         display_layout = self._display_provider.current_layout()
         project_root = self._resolve_project_root()

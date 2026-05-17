@@ -7,8 +7,9 @@ or activate apps at import time.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import replace
-from typing import Protocol
+from typing import Any, Protocol, cast
 
 from gaze.core.display_geometry import DisplayLayoutSnapshot
 from gaze.core.state import CalibrationStatus, GazeAppState
@@ -65,6 +66,7 @@ class RealTrustPreviewController:
     ) -> None:
         self._overlay = overlay
         self._activation = activation
+        self._calibration_session = calibration_session
         self._calibration = CalibrationOnboardingController(session=calibration_session)
         self._sample_source = sample_source
         self._window_provider = window_provider
@@ -145,7 +147,10 @@ class RealTrustPreviewController:
             self._overlay.hide()
             return
 
-        if self.state.readiness.calibration == CalibrationStatus.CALIBRATING:
+        if self.state.readiness.calibration in {
+            CalibrationStatus.CALIBRATING,
+            CalibrationStatus.NOT_READY,
+        } and self._sample_can_restore_tracking(sample, now_seconds=now_seconds):
             layout = self._display_provider.current_layout()
             self.state = replace(
                 self.state,
@@ -168,7 +173,7 @@ class RealTrustPreviewController:
             self._overlay.hide()
             return
 
-        candidates = self._window_provider.current_candidates()
+        candidates = self._targetable_candidates(self._window_provider.current_candidates())
         self.state = self._target_selection.apply(self.state, candidates, now_ms=now_ms)
         self._sync_overlay(candidates)
 
@@ -187,6 +192,19 @@ class RealTrustPreviewController:
         self.state = replace(self.state, last_status_message=message)
         return outcome
 
+    def _targetable_candidates(
+        self,
+        candidates: tuple[WindowCandidateSummary, ...],
+    ) -> tuple[WindowCandidateSummary, ...]:
+        ignored_owner_process_ids = _ignored_owner_process_ids(self._calibration_session)
+        if not ignored_owner_process_ids:
+            return candidates
+        return tuple(
+            candidate
+            for candidate in candidates
+            if candidate.owner_process_id not in ignored_owner_process_ids
+        )
+
     def _sync_overlay(self, candidates: tuple[WindowCandidateSummary, ...]) -> None:
         if not (
             self.state.flags.gaze_enabled
@@ -204,3 +222,25 @@ class RealTrustPreviewController:
             self._overlay.hide()
             return
         self._overlay.show(candidate)
+
+    def _sample_can_restore_tracking(
+        self,
+        sample: PupilTrackerGazeSample,
+        *,
+        now_seconds: float,
+    ) -> bool:
+        if not sample.valid:
+            return False
+        if sample.confidence < self._gaze_pipeline.min_confidence:
+            return False
+        return now_seconds - sample.timestamp <= self._gaze_pipeline.max_sample_age_seconds
+
+
+def _ignored_owner_process_ids(source: object) -> frozenset[int]:
+    provider = getattr(source, "ignored_owner_process_ids", None)
+    if not callable(provider):
+        return frozenset()
+    raw_ids = cast(Any, provider)()
+    if not isinstance(raw_ids, Iterable):
+        return frozenset()
+    return frozenset(pid for pid in raw_ids if isinstance(pid, int))

@@ -23,13 +23,22 @@ class Sample(PupilTrackerGazeSample):
 
 
 class RecordingCalibrationSession:
-    def __init__(self, result: CalibrationResult) -> None:
+    def __init__(
+        self,
+        result: CalibrationResult,
+        *,
+        ignored_owner_process_ids: frozenset[int] = frozenset(),
+    ) -> None:
         self.result = result
         self.starts = 0
+        self._ignored_owner_process_ids = ignored_owner_process_ids
 
     def start(self) -> CalibrationResult:
         self.starts += 1
         return self.result
+
+    def ignored_owner_process_ids(self) -> frozenset[int]:
+        return self._ignored_owner_process_ids
 
 
 class RecordingSampleSource:
@@ -90,15 +99,23 @@ def layout(display_id: int = 1, *, x: float = 0, width: float = 1440) -> Display
     )
 
 
-def candidate(app_name: str = "Terminal") -> WindowCandidateSummary:
+def candidate(
+    app_name: str = "Terminal",
+    *,
+    owner_process_id: int | None = 4242,
+    bounds_x: float = 0,
+    bounds_y: float = 0,
+    bounds_width: float = 500,
+    bounds_height: float = 500,
+) -> WindowCandidateSummary:
     return WindowCandidateSummary(
         app_name=app_name,
-        bounds_x=0,
-        bounds_y=0,
-        bounds_width=500,
-        bounds_height=500,
+        bounds_x=bounds_x,
+        bounds_y=bounds_y,
+        bounds_width=bounds_width,
+        bounds_height=bounds_height,
         confidence=1.0,
-        owner_process_id=4242,
+        owner_process_id=owner_process_id,
     )
 
 
@@ -172,6 +189,32 @@ def test_first_bridged_sample_after_launched_calibration_marks_ready() -> None:
     assert controller.state.current_gaze_sample.valid is True
 
 
+def test_fresh_bridged_sample_after_enable_marks_ready_without_relaunching_calibration() -> None:
+    from gaze.core.real_trust_preview import RealTrustPreviewController
+
+    display_layout = layout()
+    session = RecordingCalibrationSession(CalibrationResult.ready(display_layout=display_layout))
+    controller = RealTrustPreviewController(
+        overlay=RecordingBorderOverlay(),
+        activation=RecordingActivationService(),
+        calibration_session=session,
+        sample_source=RecordingSampleSource(Sample(timestamp=1.0, x=100, y=100, confidence=0.9)),
+        window_provider=RecordingWindowProvider((candidate(),)),
+        display_provider=RecordingDisplayProvider(display_layout),
+    )
+
+    controller.enable_gaze()
+    controller.tick(now_seconds=1.0, now_ms=400)
+
+    assert session.starts == 0
+    assert controller.state.readiness.calibration is CalibrationStatus.READY
+    assert controller.state.readiness.camera_available is True
+    assert controller.state.readiness.tracker_available is True
+    assert controller.state.calibration_display_layout == display_layout
+    assert controller.state.current_gaze_sample is not None
+    assert controller.state.current_gaze_sample.valid is True
+
+
 def test_tick_locks_real_window_target_and_shows_border_after_stability() -> None:
     from gaze.core.real_trust_preview import RealTrustPreviewController
 
@@ -205,6 +248,43 @@ def test_tick_locks_real_window_target_and_shows_border_after_stability() -> Non
     assert controller.state.current_target.owner_process_id == 4242
     assert overlay.visible is True
     assert overlay.last_candidate == candidate()
+
+
+def test_tick_ignores_launched_pupil_tracker_demo_process_as_target() -> None:
+    from gaze.core.real_trust_preview import RealTrustPreviewController
+
+    display_layout = layout()
+    overlay = RecordingBorderOverlay()
+    controller = RealTrustPreviewController(
+        overlay=overlay,
+        activation=RecordingActivationService(),
+        calibration_session=RecordingCalibrationSession(
+            CalibrationResult.ready(display_layout=display_layout),
+            ignored_owner_process_ids=frozenset({31337}),
+        ),
+        sample_source=RecordingSampleSource(
+            Sample(timestamp=1.0, x=100, y=100, confidence=0.9),
+            Sample(timestamp=1.1, x=110, y=100, confidence=0.9),
+        ),
+        window_provider=RecordingWindowProvider(
+            (
+                candidate("PupilTracker Demo", owner_process_id=31337),
+                candidate("Code", owner_process_id=4242),
+            )
+        ),
+        display_provider=RecordingDisplayProvider(display_layout),
+    )
+
+    controller.enable_gaze()
+    controller.start_calibration()
+    controller.tick(now_seconds=1.0, now_ms=0)
+    controller.tick(now_seconds=1.1, now_ms=400)
+
+    assert controller.state.current_target is not None
+    assert controller.state.current_target.app_name == "Code"
+    assert controller.state.current_target.owner_process_id == 4242
+    assert overlay.visible is True
+    assert overlay.last_candidate == candidate("Code", owner_process_id=4242)
 
 
 def test_manual_activation_uses_locked_real_target_process_identity() -> None:

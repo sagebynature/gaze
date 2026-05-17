@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 from gaze.core.display_geometry import DisplayGeometry, DisplayLayoutSnapshot
 from gaze.core.prototype import FakePrototypeController
@@ -87,6 +87,35 @@ class FakeApplication:
         self.terminated_by = sender
 
 
+class FakeTimer:
+    scheduled: ClassVar[list[FakeTimer]] = []
+
+    def __init__(self) -> None:
+        self.interval = 0.0
+        self.target: Any = None
+        self.selector = None
+        self.user_info = None
+        self.repeats = False
+
+    @classmethod
+    def scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(
+        cls,
+        interval: float,
+        target: object,
+        selector: object,
+        user_info: object,
+        repeats: bool,
+    ) -> FakeTimer:
+        timer = cls()
+        timer.interval = interval
+        timer.target = target
+        timer.selector = selector
+        timer.user_info = user_info
+        timer.repeats = repeats
+        cls.scheduled.append(timer)
+        return timer
+
+
 class FakeMenu:
     def __init__(self) -> None:
         self.items: list[str] = []
@@ -137,6 +166,7 @@ class FakeAppKit:
     NSEventModifierFlagCommand = 1
     NSEventModifierFlagOption = 2
     NSMenuItem = FakeMenuItem
+    NSTimer = FakeTimer
 
     class NSApplication:
         _app = FakeApplication()
@@ -153,6 +183,35 @@ class FakeAppKit:
             return cls._bar
 
     NSMenu = FakeMenu
+
+
+class TickRecordingController:
+    def __init__(self) -> None:
+        from gaze.core.state import GazeAppState
+
+        self.state = GazeAppState.default()
+        self.tick_calls: list[tuple[float, int]] = []
+
+    def activate(self) -> Any:
+        return None
+
+    def enable_gaze(self) -> None:
+        return None
+
+    def disable_gaze(self) -> None:
+        return None
+
+    def start_calibration(self) -> None:
+        return None
+
+    def toggle_border_enabled(self) -> None:
+        return None
+
+    def toggle_heatmap_enabled(self) -> None:
+        return None
+
+    def tick(self, *, now_seconds: float, now_ms: int) -> None:
+        self.tick_calls.append((now_seconds, now_ms))
 
 
 def test_runtime_factory_wires_recalibrate_to_real_preview_session() -> None:
@@ -181,6 +240,30 @@ def test_runtime_factory_wires_recalibrate_to_real_preview_session() -> None:
     assert runtime.controller.state.calibration_display_layout == display_layout()
 
 
+def test_menu_bar_runtime_schedules_real_preview_tick_driver() -> None:
+    FakeTimer.scheduled = []
+    controller = TickRecordingController()
+
+    runtime = build_menu_bar_app(
+        appkit=FakeAppKit(),
+        controller=controller,
+        development_mode=False,
+    )
+
+    assert len(FakeTimer.scheduled) == 1
+    timer = FakeTimer.scheduled[0]
+    assert timer.repeats is True
+    assert timer.interval > 0
+
+    timer.target.tick_(timer)
+
+    assert runtime.controller is controller
+    assert len(controller.tick_calls) == 1
+    now_seconds, now_ms = controller.tick_calls[0]
+    assert now_seconds > 0
+    assert now_ms == int(now_seconds * 1000)
+
+
 @dataclass
 class LaunchCall:
     args: list[str]
@@ -188,9 +271,15 @@ class LaunchCall:
     env: dict[str, str]
 
 
+class FakeLaunchedProcess:
+    def __init__(self, pid: int) -> None:
+        self.pid = pid
+
+
 class RecordingLauncher:
-    def __init__(self) -> None:
+    def __init__(self, *, launched_pid: int | None = None) -> None:
         self.calls: list[LaunchCall] = []
+        self.launched_pid = launched_pid
 
     def __call__(
         self,
@@ -200,7 +289,9 @@ class RecordingLauncher:
         env: dict[str, str] | None = None,
     ) -> object:
         self.calls.append(LaunchCall(args=args, cwd=cwd, env=dict(env or {})))
-        return object()
+        if self.launched_pid is None:
+            return object()
+        return FakeLaunchedProcess(self.launched_pid)
 
 
 def make_pupil_tracker_checkout(path: Path) -> None:
@@ -240,3 +331,26 @@ def test_pupil_tracker_calibration_session_launches_desktop_demo_only_on_start(
     assert str(checkout / "src") in call.env["PYTHONPATH"]
     assert str(checkout / "apps") in call.env["PYTHONPATH"]
     assert str(bridge_path) in call.args
+
+
+def test_pupil_tracker_calibration_session_exposes_launched_demo_pid_for_target_exclusion(
+    tmp_path: Path,
+) -> None:
+    from gaze.tracking.pupil_tracker_runtime import PupilTrackerDesktopCalibrationSession
+
+    checkout = tmp_path / "pupil-tracker"
+    make_pupil_tracker_checkout(checkout)
+    launcher = RecordingLauncher(launched_pid=31337)
+    session = PupilTrackerDesktopCalibrationSession(
+        sibling_path=checkout,
+        display_provider=StaticDisplayProvider(),
+        bridge_path=tmp_path / "bridge" / "gaze-samples.jsonl",
+        process_launcher=launcher,
+        python_executable="python-test",
+    )
+
+    assert session.ignored_owner_process_ids() == frozenset()
+
+    session.start()
+
+    assert session.ignored_owner_process_ids() == frozenset({31337})

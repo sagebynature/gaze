@@ -23,6 +23,7 @@ class BorderOverlayStyle:
     ignores_mouse_events: bool
     can_become_key: bool
     activates_app: bool
+    hides_on_deactivate: bool
     opacity: float
     line_width: float
     corner_radius: float
@@ -33,6 +34,7 @@ class BorderOverlayStyle:
             ignores_mouse_events=True,
             can_become_key=False,
             activates_app=False,
+            hides_on_deactivate=False,
             opacity=0.24,
             line_width=2.0,
             corner_radius=12.0,
@@ -63,6 +65,8 @@ def appkit_overlay_window_config(style: BorderOverlayStyle) -> dict[str, bool | 
         "ignores_mouse_events": style.ignores_mouse_events,
         "can_become_key": style.can_become_key,
         "activates_app": style.activates_app,
+        "hides_on_deactivate": style.hides_on_deactivate,
+        "nonactivating_panel": True,
         "opacity": style.opacity,
         "line_width": style.line_width,
         "corner_radius": style.corner_radius,
@@ -98,9 +102,14 @@ class AppKitBorderOverlay:
             candidate.bounds_width,
             candidate.bounds_height,
         )
+        style_mask = appkit.NSWindowStyleMaskBorderless | getattr(
+            appkit,
+            "NSWindowStyleMaskNonactivatingPanel",
+            0,
+        )
         window = appkit.NSPanel.alloc().initWithContentRect_styleMask_backing_defer_(
             rect,
-            appkit.NSWindowStyleMaskBorderless,
+            style_mask,
             appkit.NSBackingStoreBuffered,
             False,
         )
@@ -108,6 +117,8 @@ class AppKitBorderOverlay:
         window.setBackgroundColor_(appkit.NSColor.clearColor())
         window.setIgnoresMouseEvents_(self._style.ignores_mouse_events)
         window.setCanHide_(False)
+        if hasattr(window, "setHidesOnDeactivate_"):
+            window.setHidesOnDeactivate_(self._style.hides_on_deactivate)
         window.setLevel_(appkit.NSStatusWindowLevel)
         window.setCollectionBehavior_(
             appkit.NSWindowCollectionBehaviorCanJoinAllSpaces

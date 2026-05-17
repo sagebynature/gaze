@@ -6,6 +6,7 @@ from runtime launch code.
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from importlib import import_module
@@ -17,6 +18,8 @@ from gaze.hotkeys.bindings import GAZE_TOGGLE_HOTKEY, MANUAL_ACTIVATE_HOTKEY
 from gaze.hotkeys.commands import GazeCommandController
 from gaze.ui.menu_model import MenuItem, menu_items_for_state
 from gaze.ui.window_factories import create_developer_panel, create_settings_window
+
+_REAL_PREVIEW_TICK_INTERVAL_SECONDS = 1.0 / 30.0
 
 
 class RuntimeHotkeyRegistry:
@@ -36,6 +39,22 @@ class RuntimeHotkeyRegistry:
         handler = self._handlers.get(hotkey)
         if handler is not None:
             handler()
+
+
+class RuntimeTickDriver:
+    """NSTimer target that advances the real preview loop."""
+
+    def __init__(self, controller: Any, refresh: Callable[[], None]) -> None:
+        self._controller = controller
+        self._refresh = refresh
+
+    def tick_(self, sender: Any | None = None) -> None:
+        tick = getattr(self._controller, "tick", None)
+        if tick is None:
+            return
+        now_seconds = time.monotonic()
+        tick(now_seconds=now_seconds, now_ms=int(now_seconds * 1000))
+        self._refresh()
 
 
 class MenuRuntimeController(Protocol):
@@ -78,6 +97,8 @@ class MenuBarRuntime:
     controller: MenuRuntimeController
     development_mode: bool
     hotkeys: RuntimeHotkeyRegistry
+    tick_driver: RuntimeTickDriver | None = None
+    tick_timer: Any | None = None
 
     def refresh_menu(self) -> None:
         self.menu.removeAllItems()
@@ -246,6 +267,18 @@ def build_menu_bar_app(
         hotkeys=hotkeys,
     )
     dispatcher.set_refresh_callback(runtime.refresh_menu)
+    if hasattr(runtime_appkit, "NSTimer"):
+        runtime.tick_driver = RuntimeTickDriver(controller, runtime.refresh_menu)
+        timer_class = runtime_appkit.NSTimer
+        schedule_timer_name = "scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_"
+        schedule_timer = getattr(timer_class, schedule_timer_name)
+        runtime.tick_timer = schedule_timer(
+            _REAL_PREVIEW_TICK_INTERVAL_SECONDS,
+            runtime.tick_driver,
+            "tick:",
+            None,
+            True,
+        )
     _populate_menu(runtime_appkit, menu, controller, development_mode, dispatcher)
     status_item.setMenu_(menu)
     hotkeys.register(MANUAL_ACTIVATE_HOTKEY, dispatcher.manual_activate_)
