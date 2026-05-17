@@ -30,6 +30,11 @@ class GazeFeatureFlags:
     target_border_enabled: bool = True
     heatmap_enabled: bool = False
     auto_activate_enabled: bool = False
+    auto_activate_debounce_ms: int = 650
+
+    def __post_init__(self) -> None:
+        if not 250 <= self.auto_activate_debounce_ms <= 2000:
+            raise ValueError("auto-activate debounce must stay between 250ms and 2000ms")
 
 
 @dataclass(frozen=True)

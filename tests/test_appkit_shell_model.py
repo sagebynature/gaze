@@ -220,7 +220,7 @@ def test_build_menu_bar_app_creates_status_item_and_menu() -> None:
     assert "Open Developer Panel" in action_items
     assert "Enable Gaze" in action_items
     assert "Toggle Border" in action_items
-    assert "Toggle Heatmap" in action_items
+    assert "Toggle Heatmap" not in action_items
     assert "Recalibrate" in action_items
     assert "Quit" in action_items
 
@@ -323,10 +323,15 @@ def test_settings_and_developer_panel_windows_are_shown_and_populated() -> None:
     assert settings.title == "Gaze Settings"
     assert settings.content_rect == (0, 0, 420, 320)
     assert (
-        "No recording, no screenshots, no clicks, manual activation only."
+        "No recording, no screenshots, no clicks, manual activation by default."
         in settings.content_text
     )
+    assert "Auto-Activate" in settings.content_text
+    assert "Activation Delay" in settings.content_text
+    assert "Heatmap" not in settings.content_text
     assert "recalibrate" in settings.action_names
+    assert "toggle_auto_activate" in settings.action_names
+    assert "set_auto_activate_debounce" in settings.action_names
     assert developer is not None
     assert developer.shown is True
     assert developer.title == "Gaze Developer Panel"

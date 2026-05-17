@@ -91,4 +91,14 @@ def test_runtime_surfaces_conflicting_hotkey_feedback() -> None:
 def test_settings_window_exposes_hotkey_editing_action() -> None:
     sections = setup_sections()
 
-    assert any(section.label == "Hotkeys" and section.action == "hotkeys" for section in sections)
+    expected_actions = {
+        "Hotkeys": "hotkeys",
+        "Auto-Activate": "toggle_auto_activate",
+        "Activation Delay": "set_auto_activate_debounce",
+        "Privacy & Diagnostics": "export_scalar_summary",
+        "Reset Calibration": "reset_calibration",
+    }
+    section_actions = {section.label: section.action for section in sections}
+    for label, action in expected_actions.items():
+        assert section_actions[label] == action
+    assert all("heatmap" not in section.label.lower() for section in sections)

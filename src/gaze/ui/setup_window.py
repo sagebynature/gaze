@@ -29,13 +29,36 @@ def setup_sections() -> list[SetupSection]:
     return [
         SetupSection(
             "Privacy & Trust",
-            "No recording, no screenshots, no clicks, manual activation only.",
+            "No recording, no screenshots, no clicks, manual activation by default.",
         ),
         SetupSection("Calibration", "Start or retry calibration just in time.", "recalibrate"),
+        SetupSection("Gaze Control", "Enable or disable Gaze; disable stops all activation."),
+        SetupSection(
+            "Target Border",
+            "Show or hide the calm target border preview.",
+            "toggle_border",
+        ),
         SetupSection("Hotkeys", "Edit Cmd+G activation and Option+Cmd+G toggle.", "hotkeys"),
-        SetupSection("Border", "Control target border preview."),
-        SetupSection("Heatmap", "Optional session-local diagnostic overlay."),
-        SetupSection("Diagnostics", "Scalar-only diagnostics profile."),
+        SetupSection(
+            "Auto-Activate",
+            "Off by default. Optional automation only after a locked target is stable.",
+            "toggle_auto_activate",
+        ),
+        SetupSection(
+            "Activation Delay",
+            "Bounded debounce before optional auto-activation; Cmd+G stays available.",
+            "set_auto_activate_debounce",
+        ),
+        SetupSection(
+            "Privacy & Diagnostics",
+            "Export scalar-only diagnostics without app names, titles, or content.",
+            "export_scalar_summary",
+        ),
+        SetupSection(
+            "Reset Calibration",
+            "Clear local calibration and recalibrate.",
+            "reset_calibration",
+        ),
     ]
 
 

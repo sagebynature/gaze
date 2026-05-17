@@ -23,23 +23,25 @@ def _hotkey_parts(hotkey: str) -> tuple[str, tuple[str, ...]]:
 
 def menu_items_for_state(state: GazeAppState) -> list[MenuItem]:
     target_label = "No target"
-    confidence_label = "Confidence: --"
     lock_label = "Lock: unlocked"
     if state.current_target is not None:
         target_label = state.current_target.app_name
-        confidence_label = f"Confidence: {state.current_target.confidence:.2f}"
         lock_label = "Lock: locked" if state.current_target.locked else "Lock: unlocked"
 
     manual_key, manual_modifiers = _hotkey_parts(MANUAL_ACTIVATE_HOTKEY)
     toggle_key, toggle_modifiers = _hotkey_parts(GAZE_TOGGLE_HOTKEY)
+    auto_label = "Auto-activate: off"
+    if state.flags.auto_activate_enabled:
+        auto_label = f"Auto-activate: on after {state.flags.auto_activate_debounce_ms}ms"
 
     return [
         MenuItem(f"Status: {state.menu_status}"),
         MenuItem(f"Message: {state.last_status_message}"),
         MenuItem(f"Calibration: {state.readiness.calibration.value}"),
         MenuItem(f"Target: {target_label}"),
-        MenuItem(confidence_label),
         MenuItem(lock_label),
+        MenuItem("Cmd+G: activate locked target"),
+        MenuItem(auto_label),
         MenuItem("Activate Target", "manual_activate", manual_key, manual_modifiers),
         MenuItem(
             "Disable Gaze" if state.flags.gaze_enabled else "Enable Gaze",
@@ -48,7 +50,6 @@ def menu_items_for_state(state: GazeAppState) -> list[MenuItem]:
             toggle_modifiers,
         ),
         MenuItem("Toggle Border", "toggle_border"),
-        MenuItem("Toggle Heatmap", "toggle_heatmap"),
         MenuItem("Recalibrate", "recalibrate"),
         MenuItem("Settings", "settings"),
         MenuItem("Quit", "quit"),

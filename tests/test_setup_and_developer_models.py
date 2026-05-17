@@ -19,13 +19,17 @@ def test_setup_window_contains_mvp_essentials_only() -> None:
     assert labels == [
         "Privacy & Trust",
         "Calibration",
+        "Gaze Control",
+        "Target Border",
         "Hotkeys",
-        "Border",
-        "Heatmap",
-        "Diagnostics",
+        "Auto-Activate",
+        "Activation Delay",
+        "Privacy & Diagnostics",
+        "Reset Calibration",
     ]
-    assert "Auto Activation" not in labels
+    assert "Heatmap" not in labels
     assert "Per-App Policy" not in labels
+    assert "Developer" not in labels
 
 
 def test_gaze_owned_calibration_wizard_models_four_trust_steps() -> None:
