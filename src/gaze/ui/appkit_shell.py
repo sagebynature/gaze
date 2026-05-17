@@ -17,12 +17,15 @@ from gaze.core.state import GazeAppState
 from gaze.desktop.activation import ActivationOutcome
 from gaze.hotkeys.bindings import (
     GAZE_TOGGLE_ACTION,
+    GAZE_TOGGLE_HOTKEY,
     MANUAL_ACTIVATE_ACTION,
+    MANUAL_ACTIVATE_HOTKEY,
     HotkeyBinding,
     HotkeySettings,
     default_hotkey_settings,
 )
 from gaze.hotkeys.commands import GazeCommandController
+from gaze.hotkeys.global_hotkeys import CarbonGlobalHotkeyRegistry
 from gaze.ui.menu_model import MenuItem, menu_items_for_state
 from gaze.ui.window_factories import (
     create_developer_panel,
@@ -31,6 +34,18 @@ from gaze.ui.window_factories import (
 )
 
 _REAL_PREVIEW_TICK_INTERVAL_SECONDS = 1.0 / 30.0
+
+
+class RuntimeHotkeyRegistrar(Protocol):
+    feedback_messages: list[str]
+
+    def register(self, hotkey: str, handler: Callable[[], None], *, label: str) -> None:
+        """Register a hotkey handler."""
+        ...
+
+    def trigger(self, hotkey: str) -> None:
+        """Test seam for invoking a registered hotkey."""
+        ...
 
 
 class RuntimeHotkeyRegistry:
@@ -119,7 +134,7 @@ class MenuBarRuntime:
     action_dispatcher: MenuActionDispatcher
     controller: MenuRuntimeController
     development_mode: bool
-    hotkeys: RuntimeHotkeyRegistry
+    hotkeys: RuntimeHotkeyRegistrar
     diagnostics: ScalarDiagnostics
     launch_window: Any | None = None
     tick_driver: RuntimeTickDriver | None = None
@@ -271,6 +286,7 @@ def build_menu_bar_app(
     unavailable_hotkeys: tuple[str, ...] = (),
     diagnostics: ScalarDiagnostics | None = None,
     show_launch_window: bool = True,
+    hotkeys: RuntimeHotkeyRegistrar | None = None,
 ) -> MenuBarRuntime:
     runtime_appkit = appkit or _load_appkit()
     app = runtime_appkit.NSApplication.sharedApplication()
@@ -288,7 +304,10 @@ def build_menu_bar_app(
     )
 
     menu = runtime_appkit.NSMenu()
-    hotkeys = RuntimeHotkeyRegistry(unavailable_hotkeys=unavailable_hotkeys)
+    runtime_hotkeys = hotkeys or _default_hotkey_registry(
+        appkit_was_injected=appkit is not None,
+        unavailable_hotkeys=unavailable_hotkeys,
+    )
     runtime_diagnostics = diagnostics or ScalarDiagnostics(
         profile=default_diagnostics_profile(development_mode=development_mode)
     )
@@ -300,7 +319,7 @@ def build_menu_bar_app(
         action_dispatcher=dispatcher,
         controller=controller,
         development_mode=development_mode,
-        hotkeys=hotkeys,
+        hotkeys=runtime_hotkeys,
         diagnostics=runtime_diagnostics,
     )
     dispatcher.set_refresh_callback(runtime.refresh_menu)
@@ -317,15 +336,15 @@ def build_menu_bar_app(
             True,
         )
     settings = hotkey_settings or default_hotkey_settings()
-    _register_runtime_hotkeys(settings, hotkeys, dispatcher)
-    runtime.diagnostics.record_hotkey_feedback(tuple(hotkeys.feedback_messages))
+    _register_runtime_hotkeys(settings, runtime_hotkeys, dispatcher)
+    runtime.diagnostics.record_hotkey_feedback(tuple(runtime_hotkeys.feedback_messages))
     _populate_menu(
         runtime_appkit,
         menu,
         controller,
         development_mode,
         dispatcher,
-        tuple(hotkeys.feedback_messages),
+        tuple(runtime_hotkeys.feedback_messages),
     )
     status_item.setMenu_(menu)
     if show_launch_window:
@@ -336,9 +355,25 @@ def build_menu_bar_app(
     return runtime
 
 
+def _default_hotkey_registry(
+    *,
+    appkit_was_injected: bool,
+    unavailable_hotkeys: tuple[str, ...],
+) -> RuntimeHotkeyRegistrar:
+    if appkit_was_injected:
+        return RuntimeHotkeyRegistry(unavailable_hotkeys=unavailable_hotkeys)
+    try:
+        return CarbonGlobalHotkeyRegistry()
+    except Exception:
+        default_unavailable = (MANUAL_ACTIVATE_HOTKEY, GAZE_TOGGLE_HOTKEY)
+        return RuntimeHotkeyRegistry(
+            unavailable_hotkeys=tuple({*unavailable_hotkeys, *default_unavailable})
+        )
+
+
 def _register_runtime_hotkeys(
     settings: HotkeySettings,
-    hotkeys: RuntimeHotkeyRegistry,
+    hotkeys: RuntimeHotkeyRegistrar,
     dispatcher: MenuActionDispatcher,
 ) -> None:
     handlers: dict[str, tuple[Callable[[], None], str]] = {
@@ -351,7 +386,7 @@ def _register_runtime_hotkeys(
 
 def _register_runtime_hotkey(
     binding: HotkeyBinding,
-    hotkeys: RuntimeHotkeyRegistry,
+    hotkeys: RuntimeHotkeyRegistrar,
     handlers: dict[str, tuple[Callable[[], None], str]],
 ) -> None:
     if not binding.enabled:

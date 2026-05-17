@@ -124,7 +124,7 @@ Passed in dev-mode local bundle:
 Known blockers before beta-ready promotion:
 
 - [ ] Default release/PyPI bundle Recalibrate produced no actionable visible result when the desktop calibration source was unavailable.
-- [ ] Cmd+G did not work as a true global hotkey while another app was frontmost.
+- [ ] Cmd+G Carbon global hotkey registration is implemented and probe-validated; locked-target bundle revalidation remains pending.
 - [ ] Toggle Heatmap produced no visible effect because the runtime does not wire a real heatmap overlay.
 - [ ] Built-in/external display-layout degradation was skipped and remains pending manual evidence.
 - [ ] Scalar summary export from the live validation run remains pending.
