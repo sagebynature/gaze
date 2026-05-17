@@ -161,6 +161,24 @@ def create_settings_window(appkit: Any | None) -> Any | None:
     )
 
 
+def create_launch_setup_window(appkit: Any | None) -> Any | None:
+    if appkit is None:
+        return None
+    text = (
+        "Gaze is running.\n\n"
+        "Use the Gaze item in the menu bar for controls.\n\n"
+        "Recalibrate starts camera access only when you ask for calibration.\n\n"
+        "After calibration, enable Gaze explicitly. Cmd+G activates a locked target; "
+        "Option+Cmd+G toggles Gaze off.\n\n"
+        "No recording, screenshots, window titles, or raw desktop content are saved."
+    )
+    return _show_window(
+        _utility_window(appkit, width=460, height=360),
+        title="Gaze Setup",
+        content_view=_text_view(appkit, text, action_names=["recalibrate", "settings"]),
+    )
+
+
 def create_developer_panel(
     appkit: Any | None,
     *,

@@ -24,7 +24,11 @@ from gaze.hotkeys.bindings import (
 )
 from gaze.hotkeys.commands import GazeCommandController
 from gaze.ui.menu_model import MenuItem, menu_items_for_state
-from gaze.ui.window_factories import create_developer_panel, create_settings_window
+from gaze.ui.window_factories import (
+    create_developer_panel,
+    create_launch_setup_window,
+    create_settings_window,
+)
 
 _REAL_PREVIEW_TICK_INTERVAL_SECONDS = 1.0 / 30.0
 
@@ -113,6 +117,7 @@ class MenuBarRuntime:
     development_mode: bool
     hotkeys: RuntimeHotkeyRegistry
     diagnostics: ScalarDiagnostics
+    launch_window: Any | None = None
     tick_driver: RuntimeTickDriver | None = None
     tick_timer: Any | None = None
 
@@ -261,6 +266,7 @@ def build_menu_bar_app(
     hotkey_settings: HotkeySettings | None = None,
     unavailable_hotkeys: tuple[str, ...] = (),
     diagnostics: ScalarDiagnostics | None = None,
+    show_launch_window: bool = True,
 ) -> MenuBarRuntime:
     runtime_appkit = appkit or _load_appkit()
     app = runtime_appkit.NSApplication.sharedApplication()
@@ -318,6 +324,11 @@ def build_menu_bar_app(
         tuple(hotkeys.feedback_messages),
     )
     status_item.setMenu_(menu)
+    if show_launch_window:
+        runtime.launch_window = create_launch_setup_window(runtime_appkit)
+        activate = getattr(app, "activateIgnoringOtherApps_", None)
+        if activate is not None:
+            activate(True)
     return runtime
 
 

@@ -231,6 +231,7 @@ def test_runtime_factory_wires_recalibrate_to_real_preview_session() -> None:
         appkit=FakeAppKit(),
         controller=controller,
         development_mode=False,
+        show_launch_window=False,
     )
 
     runtime.action_dispatcher.recalibrate_()
@@ -249,6 +250,7 @@ def test_menu_bar_runtime_schedules_real_preview_tick_driver() -> None:
         appkit=FakeAppKit(),
         controller=controller,
         development_mode=False,
+        show_launch_window=False,
     )
 
     assert len(FakeTimer.scheduled) == 1
