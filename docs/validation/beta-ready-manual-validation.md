@@ -9,7 +9,9 @@ Use this checklist with scalar notes only. Record pass/fail, app category, displ
 
 - [ ] `make check` passes.
 - [ ] `make check-pupil-dev PUPIL_TRACKER_PATH=/Users/sage/workspace/sagebynature/pupil-tracker` passes.
-- [ ] Local unsigned bundle builds with `make app-bundle-pupil-dev PUPIL_TRACKER_PATH=/Users/sage/workspace/sagebynature/pupil-tracker`.
+- [ ] Local unsigned bundle builds with `make app-bundle`.
+- [ ] Bundle contains `dist/Gaze.app/Contents/Resources/models/face_landmarker.task`.
+- [ ] Default bundle uses PyPI/release `pupil-tracker`; editable sibling mode is not used unless explicitly testing dev mode.
 - [ ] Scalar summary export is attached as JSON text or copied into validation notes.
 
 ## Validation Scope

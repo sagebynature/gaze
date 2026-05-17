@@ -10,6 +10,11 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+FACE_LANDMARKER_MODEL_URL = (
+    "https://storage.googleapis.com/mediapipe-models/face_landmarker/"
+    "face_landmarker/float16/latest/face_landmarker.task"
+)
+
 
 @dataclass(frozen=True)
 class AppBundleConfig:
@@ -20,6 +25,8 @@ class AppBundleConfig:
     output_dir: Path = Path("dist")
     python_executable: str = sys.executable
     pupil_tracker_path: Path | None = None
+    face_landmarker_model_path: Path | None = None
+    face_landmarker_model_url: str = FACE_LANDMARKER_MODEL_URL
     skip_install: bool = False
 
 
@@ -55,9 +62,7 @@ def create_info_plist(config: AppBundleConfig) -> dict[str, object]:
 def create_app_launcher(config: AppBundleConfig) -> str:
     """Create the shell launcher embedded in Contents/MacOS."""
 
-    default_model_path = (
-        "$HOME/Library/Application Support/Gaze/models/face_landmarker.task"
-    )
+    default_model_path = "$APP_ROOT/Resources/models/face_landmarker.task"
     return f"""#!/bin/zsh
 set -euo pipefail
 
@@ -67,7 +72,7 @@ DEFAULT_MODEL="{default_model_path}"
 
 if [[ ! -x "$VENV_PYTHON" ]]; then
   echo "Gaze local app bundle is missing its embedded Python environment." >&2
-  echo "Rebuild it from the repo with: make app-bundle-pupil-dev" >&2
+  echo "Rebuild it from the repo with: make app-bundle" >&2
   exit 70
 fi
 
@@ -78,10 +83,6 @@ fi
 # The launcher intentionally does not verify the model file at app start.
 # Missing-model guidance belongs at explicit calibration time so opening the app
 # does not request camera/model prerequisites before the user asks to calibrate.
-
-if [[ -z "${{PUPIL_TRACKER_PATH:-}}" ]]; then
-  export PUPIL_TRACKER_PATH="$HOME/workspace/sagebynature/pupil-tracker"
-fi
 
 exec "$VENV_PYTHON" -m gaze
 """
@@ -102,12 +103,13 @@ Required permissions
 
 Required runtime inputs
 -----------------------
-- PUPIL_TRACKER_MEDIAPIPE_MODEL must point at face_landmarker.task.
-- PUPIL_TRACKER_PATH should point at the local pupil-tracker checkout when using editable dev mode.
+- The default MediaPipe FaceLandmarker model is bundled under Contents/Resources/models.
+- The default app bundle uses the PyPI/release `pupil-tracker` dependency declared by Gaze.
+- Editable PupilTracker mode is available only through the explicit app-bundle-pupil-dev target.
 
 Recommended rebuild command
 ---------------------------
-make app-bundle-pupil-dev
+make app-bundle
 
 Privacy posture
 ---------------
@@ -170,9 +172,19 @@ def build_app_bundle(
         create_local_app_readme(config),
         encoding="utf-8",
     )
+    model_path = resources_dir / "models" / "face_landmarker.task"
+    if config.face_landmarker_model_path is not None:
+        _copy_face_landmarker_model(config.face_landmarker_model_path, model_path)
 
     if config.skip_install:
         return AppBundleBuildResult(app_path=app_path, install_commands=())
+
+    if config.face_landmarker_model_path is None:
+        _download_face_landmarker_model(
+            model_path,
+            url=config.face_landmarker_model_url,
+            project_root=project_root,
+        )
 
     commands = install_commands_for_config(
         config,
@@ -193,6 +205,8 @@ def _parse_args(argv: list[str]) -> AppBundleConfig:
     parser.add_argument("--bundle-identifier", default="com.sagebynature.gaze.local")
     parser.add_argument("--output-dir", type=Path, default=Path("dist"))
     parser.add_argument("--pupil-tracker-path", type=Path)
+    parser.add_argument("--face-landmarker-model-path", type=Path)
+    parser.add_argument("--face-landmarker-model-url", default=FACE_LANDMARKER_MODEL_URL)
     parser.add_argument("--skip-install", action="store_true")
     args = parser.parse_args(argv)
     return AppBundleConfig(
@@ -200,8 +214,34 @@ def _parse_args(argv: list[str]) -> AppBundleConfig:
         bundle_identifier=args.bundle_identifier,
         output_dir=args.output_dir,
         pupil_tracker_path=args.pupil_tracker_path,
+        face_landmarker_model_path=args.face_landmarker_model_path,
+        face_landmarker_model_url=args.face_landmarker_model_url,
         skip_install=args.skip_install,
     )
+
+
+def _copy_face_landmarker_model(source: Path, destination: Path) -> None:
+    if not source.is_file():
+        msg = f"FaceLandmarker model not found: {source}"
+        raise FileNotFoundError(msg)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source, destination)
+
+
+def _download_face_landmarker_model(
+    destination: Path,
+    *,
+    url: str,
+    project_root: Path,
+) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary_destination = destination.with_suffix(destination.suffix + ".tmp")
+    subprocess.run(
+        ["curl", "-L", "--fail", "--output", str(temporary_destination), url],
+        cwd=project_root,
+        check=True,
+    )
+    temporary_destination.replace(destination)
 
 
 def main(argv: list[str] | None = None) -> int:

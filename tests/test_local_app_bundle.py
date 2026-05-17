@@ -29,15 +29,17 @@ def test_info_plist_contains_menu_bar_identity_permissions_and_signing_scope() -
     assert plist["GazeDistributionScope"] == "local-unsigned"
 
 
-def test_launcher_exports_model_and_pupil_tracker_guidance_without_source_tree_dependency() -> None:
+def test_launcher_uses_bundled_model_and_no_local_pupil_tracker_path_by_default() -> None:
     config = AppBundleConfig(app_name="Gaze")
 
     launcher = create_app_launcher(config)
 
     assert "Resources/.venv/bin/python" in launcher
     assert "PUPIL_TRACKER_MEDIAPIPE_MODEL" in launcher
-    assert "PUPIL_TRACKER_PATH" in launcher
-    assert "make app-bundle-pupil-dev" in launcher
+    assert 'DEFAULT_MODEL="$APP_ROOT/Resources/models/face_landmarker.task"' in launcher
+    assert "PUPIL_TRACKER_PATH" not in launcher
+    assert "make app-bundle" in launcher
+    assert "make app-bundle-pupil-dev" not in launcher
     assert "[[ ! -f \"$PUPIL_TRACKER_MEDIAPIPE_MODEL\" ]]" not in launcher
     assert "exec \"$VENV_PYTHON\" -m gaze" in launcher
     assert "$SOURCE_TREE" not in launcher
@@ -80,6 +82,60 @@ def test_install_commands_include_project_and_optional_editable_pupil_tracker() 
     ]
 
 
+def test_default_bundle_uses_release_dependency_not_editable_pupil_tracker() -> None:
+    commands = install_commands_for_config(
+        AppBundleConfig(),
+        project_root=Path("/tmp/gaze-project"),
+        venv_python=Path("/tmp/Gaze.app/Contents/Resources/.venv/bin/python"),
+    )
+
+    flat = "\n".join(" ".join(command) for command in commands)
+    assert "--editable" not in flat
+    assert "PUPIL_TRACKER_PATH" not in flat
+    assert commands == (
+        [
+            "uv",
+            "venv",
+            "--python",
+            sys.executable,
+            "/tmp/Gaze.app/Contents/Resources/.venv",
+        ],
+        [
+            "uv",
+            "pip",
+            "install",
+            "--python",
+            "/tmp/Gaze.app/Contents/Resources/.venv/bin/python",
+            "/tmp/gaze-project",
+        ],
+    )
+
+
+def test_build_app_bundle_copies_face_landmarker_into_resources(tmp_path: Path) -> None:
+    project_root = tmp_path / "repo"
+    project_root.mkdir()
+    output_dir = tmp_path / "dist"
+    source_model = tmp_path / "face_landmarker.task"
+    source_model.write_bytes(b"fake mediapipe model")
+    config = AppBundleConfig(
+        app_name="Gaze",
+        output_dir=output_dir,
+        face_landmarker_model_path=source_model,
+        skip_install=True,
+    )
+
+    result = build_app_bundle(config, project_root=project_root)
+
+    bundled_model = (
+        result.app_path / "Contents" / "Resources" / "models" / "face_landmarker.task"
+    )
+    assert bundled_model.read_bytes() == b"fake mediapipe model"
+    launcher = result.app_path / "Contents" / "MacOS" / "Gaze"
+    assert 'DEFAULT_MODEL="$APP_ROOT/Resources/models/face_landmarker.task"' in launcher.read_text(
+        encoding="utf-8"
+    )
+
+
 def test_build_app_bundle_writes_plist_launcher_and_docs_in_dry_run(tmp_path: Path) -> None:
     project_root = tmp_path / "repo"
     project_root.mkdir()
@@ -92,12 +148,14 @@ def test_build_app_bundle_writes_plist_launcher_and_docs_in_dry_run(tmp_path: Pa
     info_plist = result.app_path / "Contents" / "Info.plist"
     launcher = result.app_path / "Contents" / "MacOS" / "Gaze"
     readme = result.app_path / "Contents" / "Resources" / "README-local-app.txt"
+    model = result.app_path / "Contents" / "Resources" / "models" / "face_landmarker.task"
     assert info_plist.is_file()
     assert plistlib.loads(info_plist.read_bytes())["CFBundleName"] == "Gaze"
     assert launcher.is_file()
     assert os.access(launcher, os.X_OK)
     assert "PUPIL_TRACKER_MEDIAPIPE_MODEL" in launcher.read_text(encoding="utf-8")
     assert "Required permissions" in readme.read_text(encoding="utf-8")
+    assert not model.exists()
     assert result.install_commands == ()
 
 

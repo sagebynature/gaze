@@ -7,7 +7,7 @@ Scope: local unsigned `.app` bundle for realistic lifecycle and permissions vali
 
 - [x] `uv run pytest tests/test_local_app_bundle.py -v`
 - [x] `make check`
-- [x] `make app-bundle-pupil-dev PUPIL_TRACKER_PATH=/Users/sage/workspace/sagebynature/pupil-tracker`
+- [x] `make app-bundle`
 
 ## Bundle Structure
 
@@ -18,13 +18,14 @@ Scope: local unsigned `.app` bundle for realistic lifecycle and permissions vali
 - [x] `GazeDistributionScope` is `local-unsigned`; signing/notarization stays out of scope.
 - [x] `dist/Gaze.app/Contents/MacOS/Gaze` is executable.
 - [x] `dist/Gaze.app/Contents/Resources/.venv/bin/python` exists after non-dry-run build.
+- [x] `dist/Gaze.app/Contents/Resources/models/face_landmarker.task` exists after non-dry-run build.
 - [x] `dist/Gaze.app/Contents/Resources/README-local-app.txt` exists.
 
 ## Manual Smoke
 
 - [x] `open dist/Gaze.app` launches the menu-bar app outside the source tree.
 - [x] Embedded environment imports `gaze` from bundle site-packages while current directory is outside the source tree.
-- [x] Missing model/dependency failure message is actionable.
+- [x] Default bundle uses PyPI/release `pupil-tracker`; editable PupilTracker is explicit dev-only.
 - [ ] Camera prompt appears only after explicit Recalibrate/calibration start.
 - [ ] Recalibrate does not implicitly enable Gaze tracking; enable Gaze separately for live border preview.
 
@@ -32,4 +33,4 @@ Scope: local unsigned `.app` bundle for realistic lifecycle and permissions vali
 
 - [x] No screenshots are persisted.
 - [x] No frames are persisted.
-- [x] No window titles, document names, URLs, or raw desktop content are persisted.
+- [x] No window titles, content-bearing labels, URLs, or raw desktop content are persisted.

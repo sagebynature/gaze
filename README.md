@@ -45,7 +45,7 @@ make check-pupil-dev PUPIL_TRACKER_PATH=/Users/sage/workspace/sagebynature/pupil
 
 Use `check-pupil-dev` or `run-pupil-dev` after editable setup; those targets pass `uv run --no-sync` so uv does not silently revert the environment back to the locked PyPI package before execution.
 
-For manual real calibration, provide both the sibling checkout and the MediaPipe model path. If the model is missing, download it from the PupilTracker checkout first:
+For source-tree development against an editable sibling checkout, provide both the sibling checkout and the MediaPipe model path. If the model is missing, download it from the PupilTracker checkout first:
 
 ```bash
 (cd /Users/sage/workspace/sagebynature/pupil-tracker && make download-model)
@@ -57,29 +57,27 @@ If `PUPIL_TRACKER_PATH` is not provided, the target assumes a project-local sibl
 
 ## Local `.app` bundle
 
-Build a local unsigned development bundle for realistic macOS launch and permission validation:
+Build a local unsigned development bundle for realistic macOS launch and permission validation. The default bundle installs Gaze with the PyPI/release `pupil-tracker` dependency declared in `pyproject.toml` and downloads the MediaPipe FaceLandmarker model into the app bundle:
 
 ```bash
 make app-bundle
 open dist/Gaze.app
 ```
 
-For the editable sibling PupilTracker workflow, use:
+For the explicit editable sibling PupilTracker workflow only, use:
 
 ```bash
-(cd /Users/sage/workspace/sagebynature/pupil-tracker && make download-model)
-PUPIL_TRACKER_MEDIAPIPE_MODEL=/Users/sage/workspace/sagebynature/pupil-tracker/models/face_landmarker.task \
-  make app-bundle-pupil-dev PUPIL_TRACKER_PATH=/Users/sage/workspace/sagebynature/pupil-tracker
+make app-bundle-pupil-dev PUPIL_TRACKER_PATH=/Users/sage/workspace/sagebynature/pupil-tracker
 open dist/Gaze.app
 ```
 
-The local bundle is intentionally unsigned and not notarized. It embeds a Python environment under `dist/Gaze.app/Contents/Resources/.venv`, includes a launcher with missing-model guidance, and writes a local operator note at `dist/Gaze.app/Contents/Resources/README-local-app.txt`.
+The local bundle is intentionally unsigned and not notarized. It embeds a Python environment under `dist/Gaze.app/Contents/Resources/.venv`, bundles the model at `dist/Gaze.app/Contents/Resources/models/face_landmarker.task`, and writes a local operator note at `dist/Gaze.app/Contents/Resources/README-local-app.txt`.
 
 Required permission posture:
 
 - Camera is requested only when calibration explicitly starts.
 - Accessibility/Input Monitoring are not required for the current MVP path.
-- The launcher and docs must not persist screenshots, frames, window titles, document names, URLs, or raw desktop content.
+- The launcher and docs must not persist screenshots, frames, window titles, content-bearing labels, URLs, or raw desktop content.
 
 Launch the current skeleton app:
 

@@ -95,5 +95,5 @@ Resolved blocker:
 
 Current status:
 - GAZE-027 current same-display real trust preview path is validated for calibration -> scalar tracking -> target lock -> border overlay while a non-PupilTracker app is foreground.
-- Manual launch must provide both `PUPIL_TRACKER_PATH` and `PUPIL_TRACKER_MEDIAPIPE_MODEL`; use `/Users/sage/workspace/sagebynature/pupil-tracker/models/face_landmarker.task` after running `make download-model` in the PupilTracker checkout.
+- The default app-bundle path should use `make app-bundle`; it bundles `Contents/Resources/models/face_landmarker.task` and uses the PyPI/release `pupil-tracker` dependency. Use `PUPIL_TRACKER_PATH` only for explicit editable sibling development.
 - Broader multi-display/app matrix expansion remains a follow-on hardening pass, not a blocker for leaving Gate 2 fake prototype.
