@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, ClassVar
 
+import pytest
+
 from gaze.core.display_geometry import DisplayGeometry, DisplayLayoutSnapshot
 from gaze.core.prototype import FakePrototypeController
 from gaze.core.state import CalibrationStatus
@@ -265,6 +267,45 @@ def test_menu_bar_runtime_schedules_real_preview_tick_driver() -> None:
     now_seconds, now_ms = controller.tick_calls[0]
     assert now_seconds > 0
     assert now_ms == int(now_seconds * 1000)
+
+
+def test_app_main_retains_menu_bar_runtime_for_status_item_lifetime(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import gaze.app as app_module
+
+    retained_runtime = object()
+    fake_appkit = object()
+    fake_controller = object()
+    captured: dict[str, object] = {}
+
+    def fake_import_module(name: str) -> object:
+        assert name == "AppKit"
+        return fake_appkit
+
+    def fake_build_menu_bar_app(**kwargs: object) -> object:
+        captured.update(kwargs)
+        return retained_runtime
+
+    monkeypatch.setattr(app_module, "import_module", fake_import_module)
+    monkeypatch.setattr(app_module, "create_appkit_border_overlay", lambda appkit: None)
+    monkeypatch.setattr(
+        app_module,
+        "create_runtime_controller",
+        lambda *, overlay: fake_controller,
+    )
+    monkeypatch.setattr(app_module, "build_menu_bar_app", fake_build_menu_bar_app)
+    monkeypatch.setattr(app_module, "_run_event_loop", lambda appkit: 0)
+    monkeypatch.setattr(app_module, "_MENU_BAR_RUNTIME", None, raising=False)
+
+    assert app_module.main() == 0
+
+    assert captured == {
+        "appkit": fake_appkit,
+        "controller": fake_controller,
+        "development_mode": False,
+    }
+    assert app_module._MENU_BAR_RUNTIME is retained_runtime
 
 
 @dataclass

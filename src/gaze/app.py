@@ -26,6 +26,8 @@ from gaze.tracking.pupil_tracker_runtime import (
 )
 from gaze.ui.appkit_shell import build_menu_bar_app
 
+_MENU_BAR_RUNTIME: object | None = None
+
 
 def create_runtime_controller(
     *,
@@ -56,6 +58,8 @@ def create_runtime_controller(
 def main() -> int:
     """Launch the AppKit menu-bar shell when PyObjC is available."""
 
+    global _MENU_BAR_RUNTIME
+
     try:
         appkit = cast(Any, import_module("AppKit"))
     except ModuleNotFoundError as exc:
@@ -66,7 +70,11 @@ def main() -> int:
 
     overlay = create_appkit_border_overlay(appkit) or RecordingBorderOverlay()
     controller = create_runtime_controller(overlay=overlay)
-    build_menu_bar_app(appkit=appkit, controller=controller, development_mode=False)
+    _MENU_BAR_RUNTIME = build_menu_bar_app(
+        appkit=appkit,
+        controller=controller,
+        development_mode=False,
+    )
     return _run_event_loop(appkit)
 
 
