@@ -48,6 +48,7 @@ captures/
 recordings/
 models/
 *.jsonl
+.superpowers/
 
 # IDE/editor
 .idea/
