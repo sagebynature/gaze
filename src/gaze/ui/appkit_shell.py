@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from importlib import import_module
 from typing import Any, Protocol, cast
 
+from gaze.core.diagnostics import ScalarDiagnostics, default_diagnostics_profile
 from gaze.core.state import GazeAppState
 from gaze.desktop.activation import ActivationOutcome
 from gaze.hotkeys.bindings import (
@@ -111,6 +112,7 @@ class MenuBarRuntime:
     controller: MenuRuntimeController
     development_mode: bool
     hotkeys: RuntimeHotkeyRegistry
+    diagnostics: ScalarDiagnostics
     tick_driver: RuntimeTickDriver | None = None
     tick_timer: Any | None = None
 
@@ -258,6 +260,7 @@ def build_menu_bar_app(
     development_mode: bool,
     hotkey_settings: HotkeySettings | None = None,
     unavailable_hotkeys: tuple[str, ...] = (),
+    diagnostics: ScalarDiagnostics | None = None,
 ) -> MenuBarRuntime:
     runtime_appkit = appkit or _load_appkit()
     app = runtime_appkit.NSApplication.sharedApplication()
@@ -276,6 +279,9 @@ def build_menu_bar_app(
 
     menu = runtime_appkit.NSMenu()
     hotkeys = RuntimeHotkeyRegistry(unavailable_hotkeys=unavailable_hotkeys)
+    runtime_diagnostics = diagnostics or ScalarDiagnostics(
+        profile=default_diagnostics_profile(development_mode=development_mode)
+    )
     runtime = MenuBarRuntime(
         appkit=runtime_appkit,
         app=app,
@@ -285,6 +291,7 @@ def build_menu_bar_app(
         controller=controller,
         development_mode=development_mode,
         hotkeys=hotkeys,
+        diagnostics=runtime_diagnostics,
     )
     dispatcher.set_refresh_callback(runtime.refresh_menu)
     if hasattr(runtime_appkit, "NSTimer"):
@@ -301,6 +308,7 @@ def build_menu_bar_app(
         )
     settings = hotkey_settings or default_hotkey_settings()
     _register_runtime_hotkeys(settings, hotkeys, dispatcher)
+    runtime.diagnostics.record_hotkey_feedback(tuple(hotkeys.feedback_messages))
     _populate_menu(
         runtime_appkit,
         menu,

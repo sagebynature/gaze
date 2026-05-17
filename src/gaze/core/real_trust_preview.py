@@ -11,6 +11,7 @@ from collections.abc import Iterable
 from dataclasses import replace
 from typing import Any, Protocol, cast
 
+from gaze.core.diagnostics import DiagnosticsProfile, ScalarDiagnostics
 from gaze.core.display_geometry import DisplayLayoutSnapshot
 from gaze.core.state import CalibrationStatus, GazeAppState
 from gaze.core.target_selection import GazeTargetSelectionPipeline, candidate_at_gaze_point
@@ -63,6 +64,7 @@ class RealTrustPreviewController:
         display_provider: DisplayLayoutProvider,
         gaze_pipeline: GazeSamplePipeline | None = None,
         target_selection: GazeTargetSelectionPipeline | None = None,
+        diagnostics: ScalarDiagnostics | None = None,
     ) -> None:
         self._overlay = overlay
         self._activation = activation
@@ -73,6 +75,7 @@ class RealTrustPreviewController:
         self._display_provider = display_provider
         self._gaze_pipeline = gaze_pipeline or GazeSamplePipeline()
         self._target_selection = target_selection or GazeTargetSelectionPipeline()
+        self._diagnostics = diagnostics or ScalarDiagnostics(profile=DiagnosticsProfile.release())
         self.state = GazeAppState.default()
 
     def enable_gaze(self) -> None:
@@ -126,6 +129,7 @@ class RealTrustPreviewController:
         if not self.state.flags.gaze_enabled:
             self.state = self.state.with_target(None)
             self._overlay.hide()
+            self._diagnostics.record_state(self.state, now_ms=now_ms)
             return
 
         if self.state.readiness.calibration in {
@@ -137,14 +141,18 @@ class RealTrustPreviewController:
                 self._display_provider.current_layout()
             )
             display_layout_changed = self.state.last_status_message != previous_message
+            if display_layout_changed:
+                self._diagnostics.record_display_layout_degraded()
             if display_layout_changed and self.state.current_target is None:
                 self._overlay.hide()
+                self._diagnostics.record_state(self.state, now_ms=now_ms)
                 return
 
         sample = self._sample_source.current_sample()
         if sample is None:
             self.state = self.state.with_target(None)
             self._overlay.hide()
+            self._diagnostics.record_state(self.state, now_ms=now_ms)
             return
 
         if self.state.readiness.calibration in {
@@ -171,11 +179,13 @@ class RealTrustPreviewController:
         )
         if self.state.current_gaze_sample is None or not self.state.current_gaze_sample.valid:
             self._overlay.hide()
+            self._diagnostics.record_state(self.state, now_ms=now_ms)
             return
 
         candidates = self._targetable_candidates(self._window_provider.current_candidates())
         self.state = self._target_selection.apply(self.state, candidates, now_ms=now_ms)
         self._sync_overlay(candidates)
+        self._diagnostics.record_state(self.state, now_ms=now_ms)
 
     def activate(self) -> ActivationOutcome:
         """Activate the locked target owning app through the activation service."""
@@ -190,6 +200,7 @@ class RealTrustPreviewController:
             ActivationOutcome.UNAVAILABLE: "Activation unavailable",
         }[outcome]
         self.state = replace(self.state, last_status_message=message)
+        self._diagnostics.record_activation(outcome)
         return outcome
 
     def _targetable_candidates(
