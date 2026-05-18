@@ -231,7 +231,7 @@ def test_build_menu_bar_app_creates_status_item_and_menu() -> None:
     assert appkit.NSStatusBar._bar.length == appkit.NSVariableStatusItemLength
     assert runtime.status_item.title == "Gaze"
     assert runtime.status_item.menu is not None
-    assert "Status: off" in runtime.status_item.menu.items
+    assert "Gaze: Off" in runtime.status_item.menu.items
     assert "Settings" in runtime.status_item.menu.items
     assert "Open Developer Panel" in runtime.status_item.menu.items
     action_items = {
@@ -381,13 +381,15 @@ def test_settings_and_developer_panel_windows_are_shown_and_populated() -> None:
     assert settings is not None
     assert settings.shown is True
     assert settings.title == "Gaze Settings"
-    assert settings.content_rect == (0, 0, 420, 320)
+    assert settings.content_rect == (0, 0, 520, 500)
+    assert "Private daily-driver controls" in settings.content_text
     assert (
-        "No recording, no screenshots, no clicks, manual activation by default."
+        "No screenshots, camera frames, window titles, URLs, filenames, or desktop content."
         in settings.content_text
     )
     assert "Auto-Activate" in settings.content_text
     assert "Activation Delay" in settings.content_text
+    assert "Action: Export Scalar Summary" in settings.content_text
     assert "Heatmap" not in settings.content_text
     assert "recalibrate" in settings.action_names
     assert "toggle_auto_activate" in settings.action_names
@@ -410,8 +412,8 @@ def test_menu_refreshes_after_commands_and_surfaces_status_feedback() -> None:
 
     runtime.action_dispatcher.toggle_gaze_()
 
-    assert "Status: ready" in runtime.status_item.menu.items
-    assert "Message: Gaze ready" in runtime.status_item.menu.items
+    assert "Gaze: Ready" in runtime.status_item.menu.items
+    assert "Gaze ready" in runtime.status_item.menu.items
     assert "Disable Gaze" in runtime.status_item.menu.items
 
     controller.set_fake_target(FakeTarget("Terminal", 10, 20, 800, 600, 0.91))
@@ -420,7 +422,7 @@ def test_menu_refreshes_after_commands_and_surfaces_status_feedback() -> None:
     runtime.action_dispatcher.manual_activate_()
 
     assert "Target: Terminal" in runtime.status_item.menu.items
-    assert "Message: Activated Terminal" in runtime.status_item.menu.items
+    assert "Activated Terminal" in runtime.status_item.menu.items
 
 
 def test_runtime_hotkeys_trigger_same_command_seams_and_refresh_menu() -> None:
@@ -438,4 +440,4 @@ def test_runtime_hotkeys_trigger_same_command_seams_and_refresh_menu() -> None:
 
     assert controller.state.flags.gaze_enabled is True
     assert controller.state.last_status_message == "Activated Terminal"
-    assert "Message: Activated Terminal" in runtime.status_item.menu.items
+    assert "Activated Terminal" in runtime.status_item.menu.items

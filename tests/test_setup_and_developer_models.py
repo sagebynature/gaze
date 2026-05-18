@@ -8,6 +8,8 @@ from gaze.ui.developer_panel import developer_controls
 from gaze.ui.setup_window import (
     calibration_wizard_steps,
     render_calibration_wizard_text,
+    render_settings_overview_text,
+    settings_overview_sections,
     setup_sections,
 )
 
@@ -30,6 +32,67 @@ def test_setup_window_contains_mvp_essentials_only() -> None:
     assert "Heatmap" not in labels
     assert "Per-App Policy" not in labels
     assert "Developer" not in labels
+
+
+def test_settings_overview_groups_daily_driver_controls_with_calm_copy() -> None:
+    sections = settings_overview_sections()
+
+    assert [section.label for section in sections] == [
+        "Status Overview",
+        "Calibration",
+        "Gaze Control",
+        "Target Border",
+        "Hotkeys",
+        "Auto-Activate",
+        "Activation Delay",
+        "Privacy & Diagnostics",
+        "Reset Calibration",
+    ]
+    assert [section.action for section in sections] == [
+        None,
+        "recalibrate",
+        "toggle_gaze",
+        "toggle_border",
+        "hotkeys",
+        "toggle_auto_activate",
+        "set_auto_activate_debounce",
+        "export_scalar_summary",
+        "reset_calibration",
+    ]
+    descriptions = "\n".join(section.description for section in sections)
+    assert "Gaze is off until you enable it" in descriptions
+    assert "Disable stops all activation" in descriptions
+    assert "Cmd+G remains available" in descriptions
+    assert "off by default" in descriptions
+    assert "250-2000ms" in descriptions
+    assert "scalar-only" in descriptions
+    forbidden = ["Heatmap", "Developer", "fake", "window title", "URL", "filename"]
+    assert not any(token in descriptions for token in forbidden)
+
+
+def test_settings_overview_renders_polished_content_safe_text() -> None:
+    text = render_settings_overview_text()
+
+    assert text.startswith("Gaze Settings\n")
+    assert "Private daily-driver controls" in text
+    assert "• Calibration" in text
+    assert "Action: Recalibrate" in text
+    assert "Action: Export Scalar Summary" in text
+    assert "Action: Reset Calibration" in text
+    assert (
+        "No screenshots, camera frames, window titles, URLs, filenames, or desktop content."
+        in text
+    )
+    forbidden = [
+        "Heatmap",
+        "Developer",
+        "Set Fake",
+        "raw scalar bridge",
+        "/Users/",
+        "http://",
+        "https://",
+    ]
+    assert not any(token in text for token in forbidden)
 
 
 def test_gaze_owned_calibration_wizard_models_four_trust_steps() -> None:

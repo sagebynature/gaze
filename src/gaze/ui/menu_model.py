@@ -21,6 +21,14 @@ def _hotkey_parts(hotkey: str) -> tuple[str, tuple[str, ...]]:
     return parts[-1], tuple(parts[:-1])
 
 
+def _status_label(value: str) -> str:
+    return value.replace("_", " ").title()
+
+
+def _hotkey_label(hotkey: str) -> str:
+    return "+".join(part.title() for part in hotkey.split("+"))
+
+
 def menu_items_for_state(state: GazeAppState) -> list[MenuItem]:
     target_label = "No target"
     lock_label = "Lock: unlocked"
@@ -35,12 +43,15 @@ def menu_items_for_state(state: GazeAppState) -> list[MenuItem]:
         auto_label = f"Auto-activate: on after {state.flags.auto_activate_debounce_ms}ms"
 
     return [
-        MenuItem(f"Status: {state.menu_status}"),
-        MenuItem(f"Message: {state.last_status_message}"),
-        MenuItem(f"Calibration: {state.readiness.calibration.value}"),
+        MenuItem(f"Gaze: {_status_label(state.menu_status)}"),
+        MenuItem(state.last_status_message),
+        MenuItem(f"Calibration: {_status_label(state.readiness.calibration.value)}"),
         MenuItem(f"Target: {target_label}"),
         MenuItem(lock_label),
-        MenuItem("Cmd+G: activate locked target"),
+        MenuItem(f"Manual activation: {_hotkey_label(MANUAL_ACTIVATE_HOTKEY)}"),
+        MenuItem(
+            "Target border: on" if state.flags.target_border_enabled else "Target border: off",
+        ),
         MenuItem(auto_label),
         MenuItem("Activate Target", "manual_activate", manual_key, manual_modifiers),
         MenuItem(

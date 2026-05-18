@@ -11,7 +11,8 @@ from gaze.ui.developer_panel import DeveloperControl, developer_controls
 from gaze.ui.setup_window import (
     default_calibration_wizard_snapshot,
     render_calibration_wizard_text,
-    setup_sections,
+    render_settings_overview_text,
+    settings_overview_sections,
 )
 
 _RETAINED_DEVELOPER_TARGETS: list[DeveloperPanelActionTarget] = []
@@ -154,15 +155,17 @@ def _button_stack(
 def create_settings_window(appkit: Any | None) -> Any | None:
     if appkit is None:
         return None
-    sections = setup_sections()
-    text = "\n\n".join(
-        f"{section.label}\n{section.description}" for section in sections
-    )
-    action_names = [section.action for section in sections if section.action is not None]
+    action_names = [
+        section.action for section in settings_overview_sections() if section.action is not None
+    ]
     return _show_window(
-        _utility_window(appkit, width=420, height=320),
+        _utility_window(appkit, width=520, height=500),
         title="Gaze Settings",
-        content_view=_text_view(appkit, text, action_names=action_names),
+        content_view=_text_view(
+            appkit,
+            render_settings_overview_text(),
+            action_names=action_names,
+        ),
     )
 
 

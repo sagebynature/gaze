@@ -7,7 +7,7 @@ Gate: Gate 4 - Beta-ready for Sage
 
 Decision: implementation-complete for the private beta MVP path, but not fully promoted for daily-driver validation until the remaining hardware-dependent display-layout evidence is captured.
 
-Rationale: the automated trust chain is in place, the default app bundle launches and smokes cleanly, default packaged Recalibrate now launches the calibration provider without `PUPIL_TRACKER_PATH`, the locked-target Cmd+G evidence path passes, and the scalar summary export is attached. The final Sage-only daily-driver promotion still requires built-in + external display-layout evidence that was not available on the current hardware state.
+Rationale: the automated trust chain is in place, the default app bundle launches and smokes cleanly, default packaged Recalibrate now launches the calibration provider without `PUPIL_TRACKER_PATH`, Settings/menu polish now presents only private daily-driver controls, the locked-target Cmd+G evidence path passes, and the scalar summary export is attached. The final Sage-only daily-driver promotion still requires built-in + external display-layout evidence that was not available on the current hardware state.
 
 ## Automated Evidence
 
@@ -44,6 +44,7 @@ The following evidence and fixes must be completed before changing the decision 
 - Toggle Heatmap now clearly reports unavailable when no visible overlay is wired; a rendered session-local heatmap remains optional future polish rather than a silent beta blocker.
 - Display-layout evidence remains hardware-blocked in this run: active display inspection reported one external main display only, so built-in + external layout A/B switching could not be manually validated.
 - Same-layout restart recalibration burden is addressed in code: last-good calibration is persisted as scalar-only display-layout state and restored as degraded-but-usable until a fresh valid sample promotes readiness.
+- Settings/menu polish is covered by focused model and AppKit shell tests: Settings groups daily-driver controls only, menu copy avoids raw internal state labels, Heatmap and Developer controls are absent from private beta Settings, and diagnostics copy remains scalar-only.
 - 2026-05-17 final closeout on local `main` at `a488630`: `make check` passed with ruff clean, ty clean, and 194 pytest tests; `make app-bundle` rebuilt `dist/Gaze.app`; `make smoke-app-status-item` passed with native launcher parent, Python child, visible status item, and zero status-scene errors.
 - 2026-05-17 final default-bundle scan: no `PUPIL_TRACKER_PATH`, `app-bundle-pupil-dev`, `/path/to/pupil-tracker`, `make sync-pupil-dev`, or `make run-pupil-dev` strings were present in user-facing `README-local-app.txt` or package metadata.
 - 2026-05-17 final packaged runtime probe from the default bundle launched calibration successfully with one calibration child process and no new crash report.

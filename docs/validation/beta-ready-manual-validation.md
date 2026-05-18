@@ -138,12 +138,14 @@ Final default-bundle closeout evidence from local `main` plus default-bundle-cal
 - [x] `make smoke-app-status-item` passed: native launcher parent and Python child were present, status item was visible, and status scene error count was 0.
 - [x] User-facing bundle artifact scan found no `PUPIL_TRACKER_PATH`, `app-bundle-pupil-dev`, `/path/to/pupil-tracker`, `make sync-pupil-dev`, or `make run-pupil-dev` strings in `README-local-app.txt` or package metadata.
 - [x] Default-bundle Recalibrate probe launched one calibration child subprocess and produced no new crash report.
+- [x] UX/settings polish slice: focused model/AppKit tests passed for calm Settings copy, grouped daily-driver controls, polished menu labels, no Heatmap/Developer leakage, scalar-only diagnostics copy, and no internal raw state labels in the menu.
 
 Fixes applied during validation:
 
 - [x] AppKit activation lookup now uses the singular process-identifier API; regression coverage added.
 - [x] Missing default-bundle calibration UI still reports actionable guidance instead of generic missing-dependency text, and the normal adjacent-checkout bundle now packages the calibration UI so Recalibrate can launch.
 - [x] Last-good calibration persistence now prevents same-layout restarts from forcing full recalibration: explicit successful calibration writes a scalar-only local profile, restart restores it as degraded-but-usable, and the first fresh valid sample promotes readiness back to ready.
+- [x] Settings now presents private daily-driver controls only: status overview, calibration, Gaze enable/disable, target border, hotkeys, restrained auto-activate, bounded activation delay, scalar diagnostics export, and reset calibration.
 
 ## Scalar Summary Export
 

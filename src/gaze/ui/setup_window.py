@@ -25,6 +25,80 @@ class CalibrationWizardStep:
     detail: str = ""
 
 
+def settings_overview_sections() -> list[SetupSection]:
+    """Return the private-beta Settings sections in user-facing order."""
+
+    return [
+        SetupSection(
+            "Status Overview",
+            "Gaze is off until you enable it. Calibration and target status stay visible here.",
+        ),
+        SetupSection(
+            "Calibration",
+            "Start or retry calibration only when you ask. Camera access starts just in time.",
+            "recalibrate",
+        ),
+        SetupSection(
+            "Gaze Control",
+            "Enable or disable Gaze. Disable stops all activation and clears the current target.",
+            "toggle_gaze",
+        ),
+        SetupSection(
+            "Target Border",
+            "Show the calm border preview around the locked app target, or keep it hidden.",
+            "toggle_border",
+        ),
+        SetupSection(
+            "Hotkeys",
+            "Cmd+G remains available for manual activation; Option+Cmd+G toggles Gaze.",
+            "hotkeys",
+        ),
+        SetupSection(
+            "Auto-Activate",
+            "Optional automation is off by default and waits for a stable locked target.",
+            "toggle_auto_activate",
+        ),
+        SetupSection(
+            "Activation Delay",
+            "Bounded 250-2000ms delay before optional automation; manual Cmd+G stays immediate.",
+            "set_auto_activate_debounce",
+        ),
+        SetupSection(
+            "Privacy & Diagnostics",
+            "Export scalar-only diagnostics. No app names, titles, paths, "
+            "or visual content are included.",
+            "export_scalar_summary",
+        ),
+        SetupSection(
+            "Reset Calibration",
+            "Clear the local scalar calibration profile and start fresh when the setup changes.",
+            "reset_calibration",
+        ),
+    ]
+
+
+def render_settings_overview_text() -> str:
+    """Render a calm, content-safe Settings overview for the native text surface."""
+
+    lines = [
+        "Gaze Settings",
+        "Private daily-driver controls for calibration, activation, and privacy.",
+        "No screenshots, camera frames, window titles, URLs, filenames, or desktop content.",
+        "",
+    ]
+    for section in settings_overview_sections():
+        lines.append(f"• {section.label}")
+        lines.append(section.description)
+        if section.action is not None:
+            lines.append(f"Action: {_action_title(section.action)}")
+        lines.append("")
+    return "\n".join(lines).strip()
+
+
+def _action_title(action: str) -> str:
+    return " ".join(word.capitalize() for word in action.split("_"))
+
+
 def setup_sections() -> list[SetupSection]:
     return [
         SetupSection(

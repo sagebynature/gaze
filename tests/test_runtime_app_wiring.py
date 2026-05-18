@@ -591,6 +591,7 @@ def test_pupil_tracker_calibration_session_reports_actionable_guidance_without_d
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("PUPIL_TRACKER_PATH", raising=False)
     monkeypatch.setattr(pupil_tracker_runtime, "_installed_editable_project_root", lambda: None)
+    monkeypatch.setattr(pupil_tracker_runtime, "_desktop_demo_package_available", lambda: False)
     installed_package_root = tmp_path / "pupil-tracker-release"
     (installed_package_root / "src" / "pupil_tracker").mkdir(parents=True)
     (installed_package_root / "pyproject.toml").write_text(
@@ -631,6 +632,7 @@ def test_pupil_tracker_calibration_session_reports_calibration_ui_guidance_for_p
     monkeypatch.delenv("PUPIL_TRACKER_PATH", raising=False)
     monkeypatch.setattr(pupil_tracker_runtime, "_installed_editable_project_root", lambda: None)
     monkeypatch.setattr(pupil_tracker_runtime, "pupil_tracker_available", lambda: True)
+    monkeypatch.setattr(pupil_tracker_runtime, "_desktop_demo_package_available", lambda: False)
     launcher = RecordingLauncher()
     session = PupilTrackerDesktopCalibrationSession(
         display_provider=StaticDisplayProvider(),
