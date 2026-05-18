@@ -96,7 +96,7 @@ make sync
 make check
 ```
 
-PUPIL_TRACKER_PATH is not required for normal private beta use. Use the default bundle path first:
+PUPIL_TRACKER_PATH is not required for normal private beta use. Use the default bundle path first. When a sibling `../pupil-tracker` checkout is present, `make app-bundle` installs it as a normal packaged dependency so the calibration provider is available without an editable runtime override:
 
 ```bash
 make app-bundle
@@ -124,7 +124,7 @@ PUPIL_TRACKER_MEDIAPIPE_MODEL=/Users/sage/workspace/sagebynature/pupil-tracker/m
 
 ## Local `.app` bundle
 
-Build a local unsigned development bundle for realistic macOS launch and permission validation. The default bundle installs Gaze with the PyPI/release `pupil-tracker` dependency declared in `pyproject.toml` and downloads the MediaPipe FaceLandmarker model into the app bundle:
+Build a local unsigned development bundle for realistic macOS launch and permission validation. The default bundle installs Gaze, downloads the MediaPipe FaceLandmarker model into the app bundle, and uses a packaged PupilTracker dependency. If the sibling `../pupil-tracker` checkout is available, the builder installs that checkout as a regular wheel/sdist dependency so `desktop_demo` calibration support is included without `PUPIL_TRACKER_PATH` or an editable install:
 
 ```bash
 make app-bundle

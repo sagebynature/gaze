@@ -19,7 +19,7 @@ def test_beta_ready_review_records_gate_4_decision_and_required_evidence() -> No
         "make app-bundle",
         "make smoke-app-status-item",
         "user-facing bundle artifact scan",
-        "packaged runtime guidance probe",
+        "packaged runtime recalibrate launch probe",
         "make check-pupil-dev",
         "manual checklist",
         "scalar summary export",

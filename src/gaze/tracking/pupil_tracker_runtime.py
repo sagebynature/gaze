@@ -179,8 +179,8 @@ class PupilTrackerLegacyDesktopDemoProvider:
 
     def start(self) -> CalibrationResult:
         display_layout = self._display_provider.current_layout()
-        project_root = self._resolve_project_root()
-        if project_root is None:
+        launch_cwd, launch_env = self._resolve_launch_context()
+        if launch_cwd is None and launch_env is None and not _desktop_demo_package_available():
             guidance = _calibration_unavailable_guidance(self._sibling_path)
             self._snapshot = CalibrationProviderSnapshot(
                 stage=CalibrationStage.UNAVAILABLE,
@@ -193,11 +193,10 @@ class PupilTrackerLegacyDesktopDemoProvider:
 
         self._bridge_path.parent.mkdir(parents=True, exist_ok=True)
         self._bridge_path.unlink(missing_ok=True)
-        env = _bridge_environment(project_root, os.environ)
         self._process = self._process_launcher(
             [self._python_executable, "-c", _BRIDGE_SCRIPT, str(self._bridge_path)],
-            cwd=str(project_root),
-            env=env,
+            cwd=launch_cwd,
+            env=launch_env,
         )
         self._snapshot = CalibrationProviderSnapshot(
             stage=CalibrationStage.TARGET_SEQUENCE,
@@ -213,6 +212,14 @@ class PupilTrackerLegacyDesktopDemoProvider:
             tracker_available=True,
             display_layout=display_layout,
         )
+
+    def _resolve_launch_context(self) -> tuple[str | None, dict[str, str] | None]:
+        project_root = self._resolve_project_root()
+        if project_root is not None:
+            return str(project_root), _bridge_environment(project_root, os.environ)
+        if _desktop_demo_package_available():
+            return None, None
+        return None, None
 
     def _resolve_project_root(self) -> Path | None:
         for candidate in _candidate_project_roots(self._sibling_path):
@@ -305,6 +312,13 @@ def _desktop_demo_available(project_root: Path) -> bool:
     apps_path = project_root / "apps"
     desktop_demo_path = apps_path / "desktop_demo"
     return source_path is not None and desktop_demo_path.is_dir()
+
+
+def _desktop_demo_package_available() -> bool:
+    try:
+        return find_spec("desktop_demo.app") is not None
+    except ModuleNotFoundError:
+        return False
 
 
 def _calibration_unavailable_guidance(configured_sibling: Path | None) -> str:

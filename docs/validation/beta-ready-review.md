@@ -7,7 +7,7 @@ Gate: Gate 4 - Beta-ready for Sage
 
 Decision: implementation-complete for the private beta MVP path, but not fully promoted for daily-driver validation until the remaining hardware-dependent display-layout evidence is captured.
 
-Rationale: the automated trust chain is in place, the default app bundle launches and smokes cleanly, the default packaged Recalibrate failure path gives beta-safe guidance, the locked-target Cmd+G evidence path passes, and the scalar summary export is attached. The final Sage-only daily-driver promotion still requires built-in + external display-layout evidence that was not available on the current hardware state.
+Rationale: the automated trust chain is in place, the default app bundle launches and smokes cleanly, default packaged Recalibrate now launches the calibration provider without `PUPIL_TRACKER_PATH`, the locked-target Cmd+G evidence path passes, and the scalar summary export is attached. The final Sage-only daily-driver promotion still requires built-in + external display-layout evidence that was not available on the current hardware state.
 
 ## Automated Evidence
 
@@ -19,13 +19,13 @@ Required commands:
 - `make app-bundle`
 - `make smoke-app-status-item`
 - user-facing bundle artifact scan for developer-path guidance
-- packaged runtime guidance probe from outside the source tree
+- packaged runtime Recalibrate launch probe from the default bundle
 
 Optional developer-only command, not rerun in the final default-bundle closeout:
 
 - `make check-pupil-dev PUPIL_TRACKER_PATH=/Users/sage/workspace/sagebynature/pupil-tracker`
 
-These gates cover import safety, fake prototype behavior, real trust preview seams, local `.app` builder behavior, editable hotkeys, scalar diagnostics, trust surface polish, beta evidence export, privacy guards, default bundle launch, and beta-safe packaged guidance.
+These gates cover import safety, fake prototype behavior, real trust preview seams, local `.app` builder behavior, editable hotkeys, scalar diagnostics, trust surface polish, beta evidence export, privacy guards, default bundle launch, packaged calibration-provider availability, and beta-safe fallback guidance.
 
 ## Known Blocking Evidence
 
@@ -37,8 +37,8 @@ The following evidence and fixes must be completed before changing the decision 
 - Built-in + external display layouts: validate the variable display setups with scalar layout labels only.
 - Failure paths: confirm unavailable activation, no target, degraded calibration, and hotkey conflict behavior.
 - Privacy checks: confirm no visual captures, tracker image data, content-bearing labels, URLs, desktop details, or window titles are recorded.
-- Default release/PyPI bundle Recalibrate reports actionable Open Settings/provider guidance in the visible menu when the desktop calibration UI is unavailable; it does not launch a calibration subprocess or silently overwrite the guidance while disabled.
-- 2026-05-17 re-run evidence: rebuilt default `dist/Gaze.app`, passed status-item smoke, clicked Recalibrate through the live menu, observed Status: off, Calibration: retry_required, Target: No target, actionable Open Settings/provider guidance, and no calibration subprocess launch.
+- Default bundle Recalibrate launches the packaged calibration provider when the adjacent packaged PupilTracker checkout is available, without `PUPIL_TRACKER_PATH` or editable runtime overrides.
+- 2026-05-17 re-run evidence: rebuilt default `dist/Gaze.app`, confirmed `desktop_demo.app` is importable inside the bundle environment, passed status-item smoke, clicked Recalibrate through the live menu, observed one calibration child subprocess, and observed no new crash report.
 - Cmd+G has Carbon global hotkey registration plus scalar probe evidence; locked-target bundle revalidation is complete.
 - 2026-05-17 re-run evidence: rebuilt `dist/Gaze.app`, verified the package environment used `CarbonGlobalHotkeyRegistry` with zero registration feedback, sent Cmd+G against a locked target, and observed activation_success with activation_count=1.
 - Toggle Heatmap now clearly reports unavailable when no visible overlay is wired; a rendered session-local heatmap remains optional future polish rather than a silent beta blocker.
@@ -46,7 +46,7 @@ The following evidence and fixes must be completed before changing the decision 
 - Same-layout restart recalibration burden is addressed in code: last-good calibration is persisted as scalar-only display-layout state and restored as degraded-but-usable until a fresh valid sample promotes readiness.
 - 2026-05-17 final closeout on local `main` at `a488630`: `make check` passed with ruff clean, ty clean, and 194 pytest tests; `make app-bundle` rebuilt `dist/Gaze.app`; `make smoke-app-status-item` passed with native launcher parent, Python child, visible status item, and zero status-scene errors.
 - 2026-05-17 final default-bundle scan: no `PUPIL_TRACKER_PATH`, `app-bundle-pupil-dev`, `/path/to/pupil-tracker`, `make sync-pupil-dev`, or `make run-pupil-dev` strings were present in user-facing `README-local-app.txt` or package metadata.
-- 2026-05-17 final packaged runtime probe from outside the source tree returned `retry_required` with Open Settings / Reset Calibration guidance and no developer-path strings.
+- 2026-05-17 final packaged runtime probe from the default bundle launched calibration successfully with one calibration child process and no new crash report.
 
 ## Required Manual Scope
 

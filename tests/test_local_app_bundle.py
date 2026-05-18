@@ -124,6 +124,39 @@ def test_default_bundle_uses_release_dependency_not_editable_pupil_tracker() -> 
     )
 
 
+def test_default_bundle_auto_installs_packaged_sibling_calibration_provider(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "workspace"
+    project_root = workspace / "gaze"
+    sibling = workspace / "pupil-tracker"
+    project_root.mkdir(parents=True)
+    (sibling / "src" / "pupil_tracker").mkdir(parents=True)
+    (sibling / "apps" / "desktop_demo").mkdir(parents=True)
+    (sibling / "pyproject.toml").write_text(
+        '[project]\nname = "pupil-tracker"\n',
+        encoding="utf-8",
+    )
+
+    commands = install_commands_for_config(
+        AppBundleConfig(),
+        project_root=project_root,
+        venv_python=Path("/tmp/Gaze.app/Contents/Resources/.venv/bin/python"),
+    )
+
+    flat = "\n".join(" ".join(command) for command in commands)
+    assert "--editable" not in flat
+    assert "PUPIL_TRACKER_PATH" not in flat
+    assert commands[-1] == [
+        "uv",
+        "pip",
+        "install",
+        "--python",
+        "/tmp/Gaze.app/Contents/Resources/.venv/bin/python",
+        str(sibling),
+    ]
+
+
 def test_build_app_bundle_copies_face_landmarker_into_resources(tmp_path: Path) -> None:
     project_root = tmp_path / "repo"
     project_root.mkdir()

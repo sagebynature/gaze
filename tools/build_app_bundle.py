@@ -6,6 +6,7 @@ import plistlib
 import shutil
 import subprocess
 import sys
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -151,6 +152,7 @@ def install_commands_for_config(
         ["uv", "venv", "--python", config.python_executable, str(venv_dir)],
         ["uv", "pip", "install", "--python", str(venv_python), str(project_root)],
     ]
+    packaged_sibling = _packaged_sibling_pupil_tracker_path(project_root)
     if config.pupil_tracker_path is not None:
         commands.append(
             [
@@ -163,7 +165,40 @@ def install_commands_for_config(
                 str(config.pupil_tracker_path),
             ]
         )
+    elif packaged_sibling is not None:
+        commands.append(
+            [
+                "uv",
+                "pip",
+                "install",
+                "--python",
+                str(venv_python),
+                str(packaged_sibling),
+            ]
+        )
     return tuple(commands)
+
+
+def _packaged_sibling_pupil_tracker_path(project_root: Path) -> Path | None:
+    sibling = project_root.parent / "pupil-tracker"
+    if not _is_packaged_pupil_tracker_checkout(sibling):
+        return None
+    return sibling
+
+
+def _is_packaged_pupil_tracker_checkout(candidate: Path) -> bool:
+    pyproject = candidate / "pyproject.toml"
+    if not pyproject.is_file():
+        return False
+    try:
+        metadata = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+    except tomllib.TOMLDecodeError:
+        return False
+    if metadata.get("project", {}).get("name") != "pupil-tracker":
+        return False
+    return (candidate / "src" / "pupil_tracker").is_dir() and (
+        candidate / "apps" / "desktop_demo"
+    ).is_dir()
 
 
 def build_app_bundle(

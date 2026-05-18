@@ -123,25 +123,26 @@ Passed in dev-mode local bundle:
 
 Known blockers before beta-ready promotion:
 
-- [x] Default release/PyPI bundle Recalibrate no longer fails silently when the desktop calibration UI is unavailable; visible menu reports actionable Open Settings and Reset Calibration/provider guidance and remains disabled with calibration retry_required.
-- [x] Re-verified 2026-05-17: default `dist/Gaze.app` visible menu still reports Status: off, Calibration: retry_required, Target: No target, actionable Open Settings and Reset Calibration/provider guidance, and no calibration subprocess launch.
+- [x] Default bundle Recalibrate no longer stops at unavailable provider guidance when the adjacent packaged PupilTracker checkout is present; it installs the calibration UI as a normal packaged dependency and launches calibration without `PUPIL_TRACKER_PATH`.
+- [x] Re-verified 2026-05-17: default `dist/Gaze.app` exposed `desktop_demo.app` inside the bundled Python environment, status-item smoke passed, live Recalibrate created one calibration child subprocess, and no new crash report appeared.
 - [x] Cmd+G Carbon global hotkey registration is implemented and locked-target bundle revalidation passed against the rebuilt `dist/Gaze.app` package environment: Carbon registry active, registration feedback count 0, one Cmd+G event produced activation_success for a locked target.
 - [x] Toggle Heatmap no longer silently enables an unwired overlay; runtime reports Heatmap unavailable until a visible heatmap overlay is wired.
 - [ ] Built-in/external display-layout degradation remains blocked by current hardware state: active display evidence showed one external main display and no built-in + external layouts available to manually switch.
 - [x] Scalar summary export from the locked-target Cmd+G validation run is attached below.
 
-Final default-bundle closeout evidence from local `main` at `a488630`:
+Final default-bundle closeout evidence from local `main` plus default-bundle-calibration worktree:
 
-- [x] `make check` passed: ruff clean, ty clean, 194 pytest tests passed.
-- [x] `make app-bundle` rebuilt `dist/Gaze.app` with bundled MediaPipe model and PyPI/release `pupil-tracker`.
+- [x] `make check` passed: ruff clean, ty clean, 197 pytest tests passed.
+- [x] PupilTracker `make check` passed: ruff clean, ty clean, 371 pytest tests passed.
+- [x] `make app-bundle` rebuilt `dist/Gaze.app` with bundled MediaPipe model and packaged PupilTracker calibration provider.
 - [x] `make smoke-app-status-item` passed: native launcher parent and Python child were present, status item was visible, and status scene error count was 0.
 - [x] User-facing bundle artifact scan found no `PUPIL_TRACKER_PATH`, `app-bundle-pupil-dev`, `/path/to/pupil-tracker`, `make sync-pupil-dev`, or `make run-pupil-dev` strings in `README-local-app.txt` or package metadata.
-- [x] Packaged runtime guidance probe from outside the source tree returned `retry_required` with Open Settings / Reset Calibration guidance and no developer-path strings.
+- [x] Default-bundle Recalibrate probe launched one calibration child subprocess and produced no new crash report.
 
 Fixes applied during validation:
 
 - [x] AppKit activation lookup now uses the singular process-identifier API; regression coverage added.
-- [x] Missing default-bundle calibration UI now reports actionable guidance instead of generic missing-dependency text.
+- [x] Missing default-bundle calibration UI still reports actionable guidance instead of generic missing-dependency text, and the normal adjacent-checkout bundle now packages the calibration UI so Recalibrate can launch.
 - [x] Last-good calibration persistence now prevents same-layout restarts from forcing full recalibration: explicit successful calibration writes a scalar-only local profile, restart restores it as degraded-but-usable, and the first fresh valid sample promotes readiness back to ready.
 
 ## Scalar Summary Export

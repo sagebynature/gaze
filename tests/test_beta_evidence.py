@@ -79,11 +79,11 @@ def test_private_beta_docs_keep_default_bundle_separate_from_dev_overrides() -> 
     assert "make app-bundle\nopen dist/Gaze.app" in readme
     assert "PUPIL_TRACKER_PATH is not required for normal private beta use" in readme
     assert "default `dist/Gaze.app`" in checklist
-    assert "Open Settings" in checklist
-    assert "Reset Calibration" in checklist
+    assert "packaged PupilTracker calibration provider" in checklist
+    assert "one calibration child subprocess" in checklist
     assert "dev-bundle/provider guidance" not in checklist
     assert "actionable `make app-bundle-pupil-dev" not in checklist
-    assert "actionable Open Settings/provider guidance" in review
+    assert "Recalibrate now launches the calibration provider" in review
 
 
 def test_beta_manual_validation_checklist_covers_required_evidence_path() -> None:

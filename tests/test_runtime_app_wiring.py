@@ -527,6 +527,37 @@ def test_pupil_tracker_calibration_session_launches_desktop_demo_only_on_start(
     assert str(bridge_path) in call.args
 
 
+def test_pupil_tracker_calibration_session_launches_installed_desktop_demo_package(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from gaze.tracking import pupil_tracker_runtime
+    from gaze.tracking.pupil_tracker_runtime import PupilTrackerDesktopCalibrationSession
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("PUPIL_TRACKER_PATH", raising=False)
+    monkeypatch.setattr(pupil_tracker_runtime, "_candidate_project_roots", lambda configured: ())
+    monkeypatch.setattr(pupil_tracker_runtime, "_desktop_demo_package_available", lambda: True)
+    bridge_path = tmp_path / "bridge" / "gaze-samples.jsonl"
+    launcher = RecordingLauncher()
+    session = PupilTrackerDesktopCalibrationSession(
+        display_provider=StaticDisplayProvider(),
+        bridge_path=bridge_path,
+        process_launcher=launcher,
+        python_executable="python-test",
+    )
+
+    result = session.start()
+
+    assert result.status is CalibrationStatus.CALIBRATING
+    assert len(launcher.calls) == 1
+    call = launcher.calls[0]
+    assert call.args[:2] == ["python-test", "-c"]
+    assert call.cwd is None
+    assert "PYTHONPATH" not in call.env
+    assert str(bridge_path) in call.args
+
+
 def test_pupil_tracker_calibration_session_exposes_launched_demo_pid_for_target_exclusion(
     tmp_path: Path,
 ) -> None:
